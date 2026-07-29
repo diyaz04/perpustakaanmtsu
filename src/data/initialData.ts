@@ -2,7 +2,7 @@ import { Book, Member, Loan, Visit, Reservation, LibrarySettings } from '../type
 
 export const INITIAL_SETTINGS: LibrarySettings = {
   school_name: 'MTs KH A Wahab Muhsin',
-  library_name: 'Perpustakaan Baitul Hikmah',
+  library_name: 'Perpustakaan MTs KH A Wahab Muhsin',
   address: 'Jl. Sukahideung, Sukarame, Tasikmalaya, Jawa Barat',
   head_librarian: 'Ahmad Fauzi, S.Pd.I',
   nip_head: '19850412 201001 1 008',

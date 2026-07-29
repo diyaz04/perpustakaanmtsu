@@ -1,7 +1,7 @@
 import { Book, Member, Loan, Visit, Reservation, LibrarySettings } from '../types';
 import { INITIAL_BOOKS, INITIAL_MEMBERS, INITIAL_LOANS, INITIAL_VISITS, INITIAL_RESERVATIONS, INITIAL_SETTINGS } from '../data/initialData';
 
-const STORAGE_KEY = 'mts_library_app_data_v3';
+const STORAGE_KEY = 'mts_library_app_data_v4';
 
 interface AppStorageData {
   books: Book[];

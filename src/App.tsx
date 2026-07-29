@@ -65,6 +65,24 @@ export default function App() {
     saveStorageData(appData);
   }, [appData]);
 
+  // Update Document Title and Favicon based on settings
+  useEffect(() => {
+    const { library_name, logo_url } = appData.settings;
+    if (library_name) {
+      document.title = library_name;
+    }
+    if (logo_url) {
+      let favicon = document.getElementById('dynamic-favicon') as HTMLLinkElement;
+      if (!favicon) {
+        favicon = document.createElement('link');
+        favicon.id = 'dynamic-favicon';
+        favicon.rel = 'icon';
+        document.head.appendChild(favicon);
+      }
+      favicon.href = logo_url;
+    }
+  }, [appData.settings.library_name, appData.settings.logo_url]);
+
   // Recalculate fines on mount
   useEffect(() => {
     setAppData((prev) => updateFinesAndStatus(prev));
