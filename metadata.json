@@ -1,0 +1,6 @@
+{
+  "name": "Perpustakaan MTs KH A Wahab Muhsin",
+  "description": "Aplikasi Manajemen & Katalog Perpustakaan Digital MTs KH A Wahab Muhsin",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
