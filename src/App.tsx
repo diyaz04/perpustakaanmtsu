@@ -146,18 +146,21 @@ export default function App() {
             }
             showToast('Database Online', 'Supabase terhubung. Database siap digunakan.');
           } else {
-            const finalSettings = data.settings || appData.settings;
-            setAppData(updateFinesAndStatus({
-              books: data.books,
-              members: data.members,
-              loans: data.loans,
-              visits: data.visits,
-              reservations: data.reservations,
-              settings: finalSettings,
-              managers: data.managers && data.managers.length > 0 ? data.managers : appData.managers,
-            }));
             showToast('Database Online', 'Berhasil terhubung & sinkron dengan Supabase.');
           }
+          
+          // ALWAYS update app state with whatever is in Supabase (or fallback to local settings if null)
+          const finalSettings = data.settings || appData.settings;
+          setAppData(updateFinesAndStatus({
+            books: data.books,
+            members: data.members,
+            loans: data.loans,
+            visits: data.visits,
+            reservations: data.reservations,
+            settings: finalSettings,
+            managers: data.managers && data.managers.length > 0 ? data.managers : appData.managers,
+          }));
+          
           setDbError(null);
         }
       } catch (err: any) {
