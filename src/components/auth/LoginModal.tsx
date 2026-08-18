@@ -42,7 +42,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       }
 
       const manager = managers.find(
-        (m) => m.email.toLowerCase() === email.toLowerCase()
+        (m) => m.email.trim().toLowerCase() === email.trim().toLowerCase()
       );
 
       if (!manager) {
