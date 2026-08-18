@@ -15,6 +15,7 @@ import {
   Sparkles,
   Search,
   Settings,
+  AlertCircle,
 } from 'lucide-react';
 
 interface MenuViewProps {
@@ -25,6 +26,7 @@ interface MenuViewProps {
   settings: LibrarySettings;
   onNavigateTab: (tab: any) => void;
   onOpenNewLoan: () => void;
+  isSupabaseConnected: boolean;
 }
 
 export const MenuView: React.FC<MenuViewProps> = ({
@@ -35,6 +37,7 @@ export const MenuView: React.FC<MenuViewProps> = ({
   settings,
   onNavigateTab,
   onOpenNewLoan,
+  isSupabaseConnected,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -216,6 +219,21 @@ export const MenuView: React.FC<MenuViewProps> = ({
 
   return (
     <div className="space-y-6">
+      {!isSupabaseConnected && (
+        <div className="bg-amber-50 border border-amber-200 rounded-3xl p-4 sm:p-5 flex gap-3.5 text-left select-none shadow-3xs animate-pulse">
+          <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <h4 className="text-xs sm:text-sm font-black text-amber-900 leading-tight">
+              Mode Database Lokal (Belum Terintegrasi Supabase)
+            </h4>
+            <p className="text-[10px] sm:text-xs text-amber-700 leading-relaxed font-semibold">
+              Aplikasi saat ini berjalan offline dan hanya menyimpan data di perangkat ini (tidak tersinkronisasi). 
+              Hubungkan database Supabase Anda melalui tab <strong>Pengaturan</strong> di bawah, atau atur Environment Variables di Vercel agar data tersimpan aman di Cloud dan dapat diakses dari HP / komputer lain.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="relative">
       {(() => {
         const timeConfig = getTimeConfig();

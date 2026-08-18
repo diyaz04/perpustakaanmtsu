@@ -56,7 +56,7 @@ import { ReportsView } from './components/admin/ReportsView';
 import { SettingsView } from './components/admin/SettingsView';
 import { ManagersManagementView } from './components/admin/ManagersManagementView';
 
-import { CheckCircle2, AlertCircle, Bell, Calendar, Menu, X, BookOpen, Users, Repeat, UserCheck } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Bell, Calendar, Menu, X, BookOpen, Users, Repeat, UserCheck, AlertTriangle } from 'lucide-react';
 
 export default function App() {
   const [appData, setAppData] = useState(() => loadStorageData());
@@ -166,6 +166,8 @@ export default function App() {
       head_librarian: headManager ? headManager.name : rawSettings.head_librarian,
     };
   }, [rawSettings, managers]);
+
+  const isSupabaseConnected = getSupabase() !== null;
 
   // Counts for sidebar badges
   const counts = {
@@ -572,6 +574,38 @@ export default function App() {
     showToast('Petugas Keluar', 'Anda telah keluar dari portal admin.', 'info');
   };
 
+  if (!isSupabaseConnected) {
+    return (
+      <div className="min-h-screen bg-slate-900 text-slate-100 font-sans flex flex-col items-center justify-center p-6 text-center select-none">
+        <div className="max-w-md bg-slate-800 border border-slate-700 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col items-center gap-6 animate-in fade-in duration-300">
+          <div className="w-16 h-16 bg-amber-500/10 border border-amber-500/25 rounded-2xl flex items-center justify-center text-amber-500 shadow-lg shadow-amber-500/5 animate-pulse">
+            <AlertTriangle className="w-8 h-8" />
+          </div>
+          
+          <div className="space-y-2">
+            <h2 className="text-xl font-black text-white tracking-tight leading-tight">Database Tidak Terhubung</h2>
+            <p className="text-xs text-slate-400 font-semibold leading-relaxed">
+              Koneksi ke database Cloud Supabase belum dikonfigurasi. Karena aplikasi ini disiapkan untuk production, mode lokal dinonaktifkan dan koneksi database aktif wajib digunakan agar aplikasi dapat dijalankan.
+            </p>
+          </div>
+
+          <div className="w-full bg-slate-850 border border-slate-750 rounded-2xl p-4 text-left text-[11px] text-slate-400 space-y-2 font-medium leading-relaxed">
+            <p className="font-bold text-slate-200">Cara Mengaktifkan:</p>
+            <ol className="list-decimal pl-4 space-y-1">
+              <li>Buka file <code className="bg-slate-800 px-1 py-0.5 rounded border border-slate-700 text-amber-400 font-mono text-[10px]">.env</code> di root folder proyek Anda.</li>
+              <li>Masukkan <code className="font-mono text-[10px]">VITE_SUPABASE_URL</code> dan <code className="font-mono text-[10px]">VITE_SUPABASE_ANON_KEY</code>.</li>
+              <li>Jika dideploy ke Vercel, tambahkan kedua variable tersebut di pengaturan Environment Variables Vercel lalu lakukan <strong>Redeploy</strong>.</li>
+            </ol>
+          </div>
+
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+            Perpustakaan Digital MTs KH A Wahab Muhsin
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (activeMode === 'public') {
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col selection:bg-emerald-500 selection:text-white">
@@ -737,6 +771,21 @@ export default function App() {
 
           {/* Right Side: Notification Bell & Profile Pill */}
           <div className="flex items-center gap-2.5">
+            {/* Database Connection Status Badge */}
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[10px] font-extrabold select-none transition-all duration-300 shadow-3xs ${
+              isSupabaseConnected 
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60' 
+                : 'bg-amber-50 text-amber-700 border-amber-200/60 animate-pulse'
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${isSupabaseConnected ? 'bg-emerald-600' : 'bg-amber-600 animate-ping'}`} />
+              <span className="hidden sm:inline">
+                {isSupabaseConnected ? 'Supabase Terhubung' : 'Database Lokal (Belum Sinkron)'}
+              </span>
+              <span className="sm:hidden">
+                {isSupabaseConnected ? 'Cloud' : 'Lokal'}
+              </span>
+            </div>
+
             {/* Notification Bell */}
             <button className="w-9 h-9 lg:w-10 lg:h-10 bg-white hover:bg-slate-50 border border-slate-200/80 rounded-xl lg:rounded-2xl flex items-center justify-center shadow-3xs text-slate-500 hover:text-slate-800 transition-all relative cursor-pointer">
               <Bell className="w-4 h-4" />
@@ -776,6 +825,7 @@ export default function App() {
               settings={settings}
               onNavigateTab={(t) => setAdminTab(t)}
               onOpenNewLoan={() => setIsLoanModalOpen(true)}
+              isSupabaseConnected={isSupabaseConnected}
             />
           )}
 
