@@ -25,6 +25,7 @@ export interface Book {
   description?: string;
   e_book_url?: string;
   created_at?: string;
+  qr_printed_count?: number; // jumlah eksemplar yang sudah dicetak QR-nya
 }
 
 export interface Member {
@@ -83,6 +84,21 @@ export interface Reservation {
   status: 'Menunggu' | 'Disetujui' | 'Dibatalkan' | 'Selesai';
   notes?: string;
   book_title?: string;
+}
+
+export interface Manager {
+  id: string;
+  name: string;
+  email: string;
+  position: string;
+  access_books: boolean;
+  access_members: boolean;
+  access_loans: boolean;
+  access_visits: boolean;
+  access_reservations: boolean;
+  access_settings: boolean;
+  access_managers: boolean;
+  created_at?: string;
 }
 
 export interface LibrarySettings {

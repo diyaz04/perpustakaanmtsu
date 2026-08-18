@@ -19,6 +19,8 @@ import {
   School,
   AlertCircle,
   FileText,
+  Users,
+  X,
 } from 'lucide-react';
 
 interface PublicCatalogProps {
@@ -44,12 +46,21 @@ export const PublicCatalog: React.FC<PublicCatalogProps> = ({
   const [selectedBookDetail, setSelectedBookDetail] = useState<Book | null>(null);
   const [reserveBook, setReserveBook] = useState<Book | null>(null);
   const [selectedPdfBook, setSelectedPdfBook] = useState<Book | null>(null);
+  const [activeCatalogTab, setActiveCatalogTab] = useState<'all' | 'new' | 'popular' | 'recommended'>('all');
 
   // Student loan search state
   const [searchMemberNo, setSearchMemberNo] = useState('');
   const [searchedMemberResult, setSearchedMemberResult] = useState<Member | null>(null);
   const [searchedLoansResult, setSearchedLoansResult] = useState<Loan[]>([]);
   const [hasSearchedLoans, setHasSearchedLoans] = useState(false);
+
+  const searchedActiveLoans = useMemo(() => {
+    return searchedLoansResult.filter((l) => l.status === 'Dipinjam' || l.status === 'Terlambat');
+  }, [searchedLoansResult]);
+
+  const searchedHistoryLoans = useMemo(() => {
+    return searchedLoansResult.filter((l) => l.status === 'Dikembalikan');
+  }, [searchedLoansResult]);
 
   // Reservation Form state
   const [resName, setResName] = useState('');
@@ -93,15 +104,29 @@ export const PublicCatalog: React.FC<PublicCatalogProps> = ({
     });
   }, [books, searchTerm, selectedCategory, availabilityFilter]);
 
-  // Handle student loan history search
+  const sortedAndFilteredBooks = useMemo(() => {
+    let result = [...filteredBooks];
+    if (activeCatalogTab === 'new') {
+      result.reverse(); // Show newly added books first
+    } else if (activeCatalogTab === 'popular') {
+      result.sort((a, b) => (b.stock - b.available_stock) - (a.stock - a.available_stock));
+    } else if (activeCatalogTab === 'recommended') {
+      result.sort((a, b) => b.available_stock - a.available_stock);
+    }
+    return result;
+  }, [filteredBooks, activeCatalogTab]);
+
+  // Handle student/teacher loan history search
   const handleSearchLoans = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchMemberNo.trim()) return;
+    const query = searchMemberNo.trim().toLowerCase();
+    if (!query) return;
 
     const member = members.find(
       (m) =>
-        m.member_number.toLowerCase() === searchMemberNo.trim().toLowerCase() ||
-        m.name.toLowerCase().includes(searchMemberNo.trim().toLowerCase())
+        m.id.toLowerCase() === query ||
+        m.member_number.toLowerCase() === query ||
+        m.name.toLowerCase().includes(query)
     );
 
     if (member) {
@@ -141,211 +166,552 @@ export const PublicCatalog: React.FC<PublicCatalogProps> = ({
   };
 
   return (
-    <div className="space-y-8 pb-12">
-      {/* Hero Banner */}
-      <div className="bg-gradient-to-r from-green-800 via-emerald-700 to-green-800 rounded-3xl p-6 sm:p-10 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 bottom-0 opacity-10 translate-x-12 translate-y-12 pointer-events-none">
-          <BookOpen className="w-96 h-96" />
-        </div>
-
-        <div className="max-w-2xl relative z-10 space-y-3">
-          <div className="inline-flex items-center gap-2 bg-emerald-500/30 border border-emerald-400/40 text-emerald-100 text-xs font-semibold px-3 py-1 rounded-full backdrop-blur-md">
-            <School className="w-3.5 h-3.5 text-emerald-300" />
-            Katalog Publik {settings.school_name}
+    <div className="space-y-12 pb-12">
+      {/* 1. Desktop Hero Banner Section */}
+      <div className="relative hidden lg:flex bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden p-6 sm:p-10 lg:p-12 flex-col lg:flex-row items-center gap-12">
+        <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/5 via-green-500/5 to-transparent pointer-events-none" />
+        <div className="absolute -left-20 -top-20 w-80 h-80 rounded-full bg-emerald-500/5 blur-3xl pointer-events-none" />
+        
+        {/* Left Column - Hero Content & Search */}
+        <div className="flex-1 space-y-6 relative z-10 w-full text-left">
+          <div className="inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-100/80 text-emerald-800 text-[10px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider">
+            <span className="w-1.5 h-1.5 bg-emerald-600 rounded-full animate-pulse" />
+            Selamat datang di
           </div>
-          <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight">
-            Cari & Cek Ketersediaan Buku Koleksi Perpustakaan
-          </h2>
-          <p className="text-emerald-100 text-xs sm:text-sm leading-relaxed">
-            Temukan buku pelajaran, kitab keagamaan, karya ilmiah, hingga buku bacaan fiksi secara mudah. Cek status ketersediaan di rak secara real-time.
-          </p>
-        </div>
+          
+          <div className="space-y-3">
+            <h1 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-none">
+              Perpustakaan Digital <br />
+              <span className="text-emerald-600">MTs KH A Wahab Muhsin</span>
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 max-w-xl font-medium leading-relaxed">
+              Sumber belajar tanpa batas untuk mendukung prestasi, literasi, dan kecintaan terhadap ilmu pengetahuan.
+            </p>
+          </div>
 
-        {/* Quick Search Bar */}
-        <div className="mt-6 relative z-10 max-w-xl">
-          <div className="relative">
-            <Search className="w-5 h-5 text-slate-400 absolute left-4 top-3.5" />
+          {/* Large Search Input */}
+          <div className="max-w-xl bg-white border border-slate-200 shadow-lg shadow-slate-100 rounded-2xl p-1.5 flex items-center gap-2 focus-within:ring-4 focus-within:ring-emerald-500/10 focus-within:border-emerald-500 transition-all">
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Ketik judul buku, pengarang, penerbit, atau ISBN..."
-              className="w-full pl-12 pr-4 py-3 bg-white text-slate-900 rounded-2xl shadow-lg border border-emerald-200 text-sm focus:outline-none focus:ring-4 focus:ring-emerald-400/30 font-medium placeholder:text-slate-400"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600 text-xs font-bold"
-              >
-                Bersihkan
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Student Self-Service Box (Cek Pinjaman Sendiri) */}
-      <div className="bg-white border border-emerald-100 rounded-2xl p-5 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-          <div>
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <UserCheck className="w-4 h-4 text-emerald-600" />
-              Cek Riwayat & Jatuh Tempo Pinjaman Anda
-            </h3>
-            <p className="text-xs text-slate-500">
-              Masukkan NIS (Siswa) atau NIP (Guru) untuk mengecek buku yang sedang dipinjam
-            </p>
-          </div>
-
-          <form onSubmit={handleSearchLoans} className="flex gap-2 w-full sm:w-auto">
-            <input
-              type="text"
-              value={searchMemberNo}
-              onChange={(e) => setSearchMemberNo(e.target.value)}
-              placeholder="Masukkan NIS / NIP..."
-              className="px-3 py-1.5 border border-slate-300 rounded-xl text-xs w-full sm:w-56 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              placeholder="Cari buku, judul, pengarang, penerbit, atau ISBN..."
+              className="w-full pl-3 text-xs sm:text-sm text-slate-900 focus:outline-none placeholder:text-slate-400 font-semibold"
             />
             <button
-              type="submit"
-              className="px-4 py-1.5 bg-gradient-to-r from-green-600 to-emerald-500 text-white text-xs font-semibold rounded-xl hover:from-green-700 hover:to-emerald-600 shadow-xs shrink-0"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white p-2.5 sm:p-3 rounded-xl transition-colors cursor-pointer flex items-center justify-center shrink-0"
             >
-              Cek Status
+              <Search className="w-4.5 h-4.5 sm:w-5 h-5" />
             </button>
-          </form>
-        </div>
-
-        {/* Loan Search Result */}
-        {hasSearchedLoans && (
-          <div className="animate-in fade-in duration-200 pt-2">
-            {searchedMemberResult ? (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between bg-emerald-50 p-3 rounded-xl border border-emerald-200">
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={searchedMemberResult.photo_url}
-                      alt={searchedMemberResult.name}
-                      className="w-10 h-10 rounded-full object-cover border border-emerald-300"
-                    />
-                    <div>
-                      <div className="font-bold text-xs text-emerald-950">
-                        {searchedMemberResult.name} ({searchedMemberResult.member_number})
-                      </div>
-                      <div className="text-[11px] text-emerald-700">
-                        {searchedMemberResult.class_or_position} • {searchedMemberResult.role.toUpperCase()}
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => onOpenMemberCard(searchedMemberResult)}
-                    className="px-3 py-1 bg-white border border-emerald-300 text-emerald-800 text-xs font-semibold rounded-lg hover:bg-emerald-100"
-                  >
-                    Lihat Kartu Anggota
-                  </button>
-                </div>
-
-                {searchedLoansResult.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {searchedLoansResult.map((loan) => (
-                      <div
-                        key={loan.id}
-                        className={`p-3.5 rounded-xl border text-xs space-y-2 ${
-                          loan.status === 'Terlambat'
-                            ? 'bg-rose-50 border-rose-200 text-rose-900'
-                            : loan.status === 'Dipinjam'
-                            ? 'bg-amber-50 border-amber-200 text-amber-900'
-                            : 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                        }`}
-                      >
-                        <div className="flex justify-between items-start font-bold">
-                          <span className="line-clamp-1">{loan.book_title}</span>
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] uppercase ${
-                              loan.status === 'Terlambat'
-                                ? 'bg-rose-600 text-white'
-                                : loan.status === 'Dipinjam'
-                                ? 'bg-amber-600 text-white'
-                                : 'bg-emerald-600 text-white'
-                            }`}
-                          >
-                            {loan.status}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-[11px] text-slate-600 pt-1 border-t border-slate-200/50">
-                          <span>Tgl Pinjam: {loan.loan_date}</span>
-                          <span>Jatuh Tempo: <strong>{loan.due_date}</strong></span>
-                        </div>
-                        {loan.fine_amount > 0 && (
-                          <div className="text-rose-700 font-bold text-xs bg-white/60 p-1.5 rounded border border-rose-200">
-                            Estimasi Denda Keterlambatan: Rp {loan.fine_amount.toLocaleString('id-ID')}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-slate-500 italic">
-                    Tidak ada transaksi peminjaman aktif untuk anggota ini.
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>Anggota dengan NIS/NIP "{searchMemberNo}" tidak ditemukan. Silakan periksa kembali nomor Anda.</span>
-              </div>
-            )}
           </div>
-        )}
-      </div>
 
-      {/* Category Filter Pills & Availability Selector */}
-      <div className="space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          {/* Category Scroll */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-            {categoriesList.map((cat) => (
+          {/* Popular Searches Tags */}
+          <div className="flex flex-wrap items-center gap-2 text-[11px]">
+            <span className="font-bold text-slate-400">Pencarian populer:</span>
+            {['Fiqih', 'Sejarah Islam', 'Bahasa Arab', 'IPA', 'Matematika'].map((tag) => (
               <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
-                  selectedCategory === cat
-                    ? 'bg-gradient-to-r from-green-600 to-emerald-500 text-white shadow-xs'
-                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                }`}
+                key={tag}
+                onClick={() => setSearchTerm(tag)}
+                className="px-3 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-slate-905 font-bold rounded-lg transition-colors cursor-pointer"
               >
-                {cat}
+                {tag}
               </button>
             ))}
           </div>
-
-          {/* Availability Filter */}
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-xs font-medium text-slate-500">Status:</span>
-            <select
-              value={availabilityFilter}
-              onChange={(e) => setAvailabilityFilter(e.target.value as any)}
-              className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              <option value="all">Semua Koleksi</option>
-              <option value="available">Tersedia Saja</option>
-              <option value="borrowed">Sedang Dipinjam</option>
-            </select>
-          </div>
         </div>
 
-        {/* Active Filters Summary */}
-        <div className="flex items-center justify-between text-xs text-slate-500">
-          <div>
-            Menampilkan <strong>{filteredBooks.length}</strong> dari total {books.length} koleksi buku
+        {/* Right Column - Device Mockup & Stats Cards */}
+        <div className="flex-1 relative flex items-center justify-center w-full lg:w-auto">
+          {/* Main Illustration mockup */}
+          <div className="relative w-full max-w-md aspect-[16/9] lg:aspect-square overflow-hidden rounded-2xl shadow-lg border border-slate-200/80">
+            <img
+              src="/assets/library_landing_hero.jpg"
+              alt="Mockup Aplikasi Perpustakaan Digital"
+              className="w-full h-full object-cover"
+            />
+          </div>
+
+          {/* Card 1: Total Books (Floating Top Left) */}
+          <div className="absolute top-4 -left-4 sm:-left-8 bg-white border border-slate-100 rounded-2xl p-3 shadow-md flex items-center gap-3 w-36 sm:w-44 animate-bounce-slow">
+            <div className="w-9 h-9 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 shrink-0">
+              <BookOpen className="w-4.5 h-4.5" />
+            </div>
+            <div className="min-w-0 text-left">
+              <p className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider">Koleksi Buku</p>
+              <p className="font-extrabold text-sm sm:text-base text-slate-900 leading-none mt-0.5">{books.length}</p>
+              <p className="text-[8px] text-slate-400 font-semibold mt-0.5">Total Tersedia</p>
+            </div>
+          </div>
+
+          {/* Card 2: Total Members (Floating Middle Right) */}
+          <div className="absolute top-1/2 -translate-y-1/2 -right-4 bg-white border border-slate-100 rounded-2xl p-3 shadow-md flex items-center gap-3 w-36 sm:w-44">
+            <div className="w-9 h-9 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 shrink-0">
+              <Users className="w-4.5 h-4.5" />
+            </div>
+            <div className="min-w-0 text-left">
+              <p className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider">Anggota Terdaftar</p>
+              <p className="font-extrabold text-sm sm:text-base text-slate-900 leading-none mt-0.5">{members.length}</p>
+              <p className="text-[8px] text-slate-400 font-semibold mt-0.5">Siswa & Guru</p>
+            </div>
+          </div>
+
+          {/* Card 3: Quote Card (Floating Bottom Left) */}
+          <div className="absolute -bottom-4 -left-4 bg-white border border-slate-100 rounded-2xl p-4 shadow-md w-60 text-left hidden sm:block">
+            <div className="flex gap-2">
+              <span className="text-emerald-500 font-serif text-3xl leading-none font-bold">“</span>
+              <div>
+                <p className="text-[10px] text-slate-600 font-bold leading-relaxed">
+                  Membaca adalah jendela dunia, belajar adalah kuncinya.
+                </p>
+                <p className="text-[8px] text-slate-400 font-bold mt-1.5 uppercase">
+                  – MTs KH A Wahab Muhsin
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Book Grid */}
-      {filteredBooks.length > 0 ? (
+      {/* 2. Mobile Hero Banner Section */}
+      <div className="lg:hidden bg-gradient-to-br from-emerald-500/5 via-green-500/10 to-emerald-500/5 border border-emerald-100 rounded-3xl p-5 text-left relative overflow-hidden flex flex-col gap-6">
+        <div className="absolute right-0 top-0 w-48 h-48 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
+
+        <div className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-100 text-emerald-805 text-emerald-800 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider w-fit">
+          <span className="w-1.5 h-1.5 bg-emerald-600 rounded-full animate-pulse" />
+          Selamat datang di
+        </div>
+
+        <div className="space-y-2">
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-tight">
+            Perpustakaan Digital <br />
+            <span className="text-emerald-600">MTs KH A Wahab Muhsin</span>
+          </h1>
+          <p className="text-[11px] text-slate-500 leading-relaxed font-semibold">
+            Temukan buku pelajaran, kitab keagamaan, karya ilmiah, hingga bacaan fiksi secara mudah. Akses dimana saja, kapan saja untuk mendukung prestasi dan literasi Anda.
+          </p>
+        </div>
+
+        <div className="w-full flex justify-center">
+          <div className="w-full max-w-[280px] aspect-[4/3] rounded-xl overflow-hidden shadow-md border border-slate-200 bg-white">
+            <img
+              src="/assets/library_landing_hero.jpg"
+              alt="Mockup Digital"
+              className="w-full h-full object-cover"
+            />
+          </div>
+        </div>
+
+        <div className="bg-white border border-slate-200 shadow-md rounded-2xl p-1.5 flex items-center gap-2">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Cari buku, judul, pengarang..."
+            className="w-full pl-3 text-xs text-slate-900 focus:outline-none placeholder:text-slate-400 font-semibold"
+          />
+          <button
+            className="bg-emerald-600 hover:bg-emerald-700 text-white p-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center shrink-0"
+          >
+            <Search className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* 3. Mobile Stats Row (Grid of 3 cards) */}
+      <div className="lg:hidden grid grid-cols-3 gap-2.5">
+        {/* Card 1: Total Koleksi */}
+        <div className="bg-white border border-slate-200/60 rounded-2xl p-3 flex flex-col items-center justify-center text-center shadow-3xs">
+          <div className="w-8 h-8 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 mb-2">
+            <BookOpen className="w-4 h-4" />
+          </div>
+          <div className="text-left w-full text-center">
+            <span className="block text-[8px] font-extrabold text-slate-400 uppercase tracking-wide leading-none">Total Koleksi</span>
+            <span className="block text-xs font-black text-slate-900 mt-1 leading-none">
+              {books.length.toLocaleString('id-ID')}
+            </span>
+            <span className="block text-[8px] font-bold text-slate-500 mt-1 leading-none">Buku Tersedia</span>
+          </div>
+        </div>
+
+        {/* Card 2: Anggota Terdaftar */}
+        <div className="bg-white border border-slate-200/60 rounded-2xl p-3 flex flex-col items-center justify-center text-center shadow-3xs">
+          <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 mb-2">
+            <Users className="w-4 h-4" />
+          </div>
+          <div className="text-left w-full text-center">
+            <span className="block text-[8px] font-extrabold text-slate-400 uppercase tracking-wide leading-none">Anggota</span>
+            <span className="block text-xs font-black text-slate-900 mt-1 leading-none">
+              {members.length.toLocaleString('id-ID')}
+            </span>
+            <span className="block text-[8px] font-bold text-slate-500 mt-1 leading-none">Siswa & Guru</span>
+          </div>
+        </div>
+
+        {/* Card 3: Peminjaman Hari Ini */}
+        <div className="bg-white border border-slate-200/60 rounded-2xl p-3 flex flex-col items-center justify-center text-center shadow-3xs">
+          <div className="w-8 h-8 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600 mb-2">
+            <Clock className="w-4 h-4" />
+          </div>
+          <div className="text-left w-full text-center">
+            <span className="block text-[8px] font-extrabold text-slate-400 uppercase tracking-wide leading-none">Hari Ini</span>
+            <span className="block text-xs font-black text-slate-900 mt-1 leading-none">
+              {loans.filter(l => l.loan_date === new Date().toISOString().split('T')[0]).length}
+            </span>
+            <span className="block text-[8px] font-bold text-slate-500 mt-1 leading-none">Buku Dipinjam</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. Mobile Popular Categories Section */}
+      <div className="lg:hidden space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">Kategori Populer</h3>
+          <button 
+            onClick={() => {
+              const el = document.getElementById('kategori-katalog');
+              el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+            className="text-xs font-bold text-emerald-600 hover:text-emerald-700 cursor-pointer"
+          >
+            Lihat Semua
+          </button>
+        </div>
+
+        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory">
+          {[
+            { cat: 'Agama Islam', icon: School },
+            { cat: 'Bahasa & Sastra', icon: FileText },
+            { cat: 'Matematika & IPA', icon: Sparkles },
+            { cat: 'IPS & Sejarah', icon: BookOpen },
+            { cat: 'Teknologi & Umum', icon: Layers }
+          ].map((item) => {
+            const Icon = item.icon;
+            const isSelected = selectedCategory === item.cat;
+            return (
+              <button
+                key={item.cat}
+                onClick={() => {
+                  setSelectedCategory(item.cat);
+                  document.getElementById('koleksi-katalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }}
+                className={`snap-start shrink-0 w-24 p-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center ${
+                  isSelected
+                    ? 'bg-emerald-50 border-emerald-300 text-emerald-700 shadow-sm'
+                    : 'bg-white border-slate-100 hover:border-slate-300 hover:bg-slate-50 text-slate-600'
+                }`}
+              >
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center mb-1.5 ${
+                  isSelected ? 'bg-emerald-100' : 'bg-slate-50'
+                }`}>
+                  <Icon className="w-4 h-4 text-emerald-600" />
+                </div>
+                <span className="text-[9px] font-extrabold leading-tight block truncate w-full">{item.cat}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 5. Mobile Promo Banner */}
+      <div className="lg:hidden bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-100 rounded-2xl p-5 flex flex-row items-center justify-between gap-4 text-left shadow-3xs">
+        <div className="space-y-3">
+          <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 leading-tight">
+            Ribuan buku menanti <br /> untuk dibaca!
+          </h4>
+          <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">
+            Temukan, baca, dan pinjam buku favoritmu dengan mudah.
+          </p>
+          <button 
+            onClick={() => {
+              const el = document.getElementById('koleksi-katalog');
+              el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] rounded-xl shadow-xs transition-colors inline-flex items-center gap-1 cursor-pointer"
+          >
+            <span>Lihat Semua Koleksi</span>
+            <ChevronRight className="w-3 h-3" />
+          </button>
+        </div>
+        <div className="w-20 shrink-0 flex items-center justify-center">
+          <BookOpen className="w-14 h-14 text-emerald-600 opacity-20" />
+        </div>
+      </div>
+
+      {/* 6. Desktop Category Grid Section */}
+      <div id="kategori-katalog" className="hidden lg:grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Circle Icons grid */}
+        <div className="lg:col-span-2 bg-white border border-slate-200/80 shadow-2xs rounded-2xl p-6 flex flex-col justify-between">
+          <div className="text-left">
+            <h3 className="text-[10px] font-extrabold text-slate-400 mb-4 uppercase tracking-widest">
+              Pilih Kategori Buku
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {categoriesList.map((cat) => {
+                const isSelected = selectedCategory === cat;
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => {
+                      setSelectedCategory(cat);
+                      const el = document.getElementById('koleksi-katalog');
+                      el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }}
+                    className={`flex flex-col items-center justify-center p-4 rounded-2xl border text-center transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-emerald-50 border-emerald-300 text-emerald-700 shadow-sm'
+                        : 'bg-white border-slate-100 hover:border-slate-350 hover:bg-slate-50 text-slate-600'
+                    }`}
+                  >
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2.5 transition-colors ${
+                      isSelected ? 'bg-emerald-100' : 'bg-slate-50'
+                    }`}>
+                      {cat === 'Semua' ? (
+                        <Layers className="w-5 h-5 text-emerald-600" />
+                      ) : cat === 'Agama Islam' ? (
+                        <School className="w-5 h-5 text-emerald-600" />
+                      ) : cat === 'Bahasa & Sastra' ? (
+                        <FileText className="w-5 h-5 text-emerald-600" />
+                      ) : cat === 'Matematika & IPA' ? (
+                        <Sparkles className="w-5 h-5 text-emerald-600" />
+                      ) : (
+                        <BookOpen className="w-5 h-5 text-emerald-600" />
+                      )}
+                    </div>
+                    <span className="text-[11px] font-bold leading-tight">{cat}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Info card */}
+        <div className="bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-100 shadow-2xs rounded-2xl p-6 flex flex-col sm:flex-row justify-between items-center gap-6 text-left">
+          <div className="space-y-4">
+            <h3 className="text-sm sm:text-base font-extrabold text-slate-800 leading-tight">
+              Temukan, baca, dan pinjam buku favoritmu dengan mudah.
+            </h3>
+            <button 
+              onClick={() => {
+                const el = document.getElementById('koleksi-katalog');
+                el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+              className="px-4 py-2 bg-emerald-605 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>Lihat Semua Koleksi</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="w-20 shrink-0 flex items-center justify-center">
+            <BookOpen className="w-16 h-16 text-emerald-600 opacity-20" />
+          </div>
+        </div>
+      </div>
+
+      {/* Cek Status Pinjaman Checker Bar */}
+      <div id="sirkulasi-checker" className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-5 shadow-3xs flex flex-col lg:flex-row lg:items-center justify-between gap-6 text-left">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-800 shrink-0 shadow-2xs">
+            <UserCheck className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-sm sm:text-base font-extrabold text-slate-900">
+              Cek Riwayat & Jatuh Tempo Pinjaman Anda
+            </h3>
+            <p className="text-xs text-slate-500 font-semibold">
+              Masukkan NIS (Siswa) atau NIP (Guru) untuk mengecek buku yang sedang dipinjam.
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSearchLoans} className="flex gap-2 w-full lg:w-auto max-w-md shrink-0">
+          <input
+            type="text"
+            value={searchMemberNo}
+            onChange={(e) => setSearchMemberNo(e.target.value)}
+            placeholder="Masukkan NIS / NIP..."
+            className="flex-grow pl-4 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold shadow-3xs"
+          />
+          <button
+            type="submit"
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl transition-colors cursor-pointer shrink-0 inline-flex items-center gap-1.5 shadow-md shadow-emerald-600/10"
+          >
+            <Clock className="w-4 h-4" />
+            <span>Cek Status</span>
+          </button>
+        </form>
+      </div>
+
+      {/* Loan Search Result Box */}
+      {hasSearchedLoans && (
+        <div className="bg-white border border-slate-200/80 shadow-md rounded-2xl p-6 relative animate-in slide-in-from-top duration-300 text-left">
+          <button
+            onClick={() => {
+              setHasSearchedLoans(false);
+              setSearchMemberNo('');
+              setSearchedMemberResult(null);
+              setSearchedLoansResult([]);
+            }}
+            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 cursor-pointer"
+          >
+            <XCircle className="w-5 h-5" />
+          </button>
+
+          {searchedMemberResult ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+                <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center font-bold text-emerald-800 text-sm">
+                  {searchedMemberResult.name.slice(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-800 text-sm">{searchedMemberResult.name}</h4>
+                  <p className="text-[11px] text-slate-400 font-bold uppercase">
+                    {searchedMemberResult.role} • {searchedMemberResult.member_number} • {searchedMemberResult.class_or_position}
+                  </p>
+                </div>
+              </div>
+
+              {/* Separate Active and History */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Active Loans (Belum Dikembalikan) */}
+                <div className="space-y-3">
+                  <h5 className="font-extrabold text-xs text-rose-700 uppercase tracking-wider flex items-center gap-1.5 bg-rose-50 px-2.5 py-2 rounded-xl border border-rose-100/50">
+                    <Clock className="w-3.5 h-3.5" />
+                    Belum Dikembalikan ({searchedActiveLoans.length})
+                  </h5>
+                  {searchedActiveLoans.length > 0 ? (
+                    <div className="space-y-3">
+                      {searchedActiveLoans.map((loan) => {
+                        const isOverdue = loan.status === 'Terlambat';
+                        return (
+                          <div
+                            key={loan.id}
+                            className={`p-4 rounded-xl border flex items-center justify-between gap-4 ${
+                              isOverdue
+                                ? 'bg-rose-50/50 border-rose-250 border-rose-200 text-rose-950 shadow-3xs'
+                                : 'bg-amber-50/30 border-amber-200/80 text-amber-950 shadow-3xs'
+                            }`}
+                          >
+                            <div className="min-w-0 space-y-1">
+                              <h5 className="font-bold text-xs truncate" title={loan.book_title}>{loan.book_title || 'Buku Tidak Diketahui'}</h5>
+                              <p className="text-[10px] text-slate-500 font-semibold">
+                                Pinjam: {loan.loan_date} | Batas: <span className={isOverdue ? 'text-rose-600 font-bold' : ''}>{loan.due_date}</span>
+                              </p>
+                              {isOverdue && loan.fine_amount > 0 && (
+                                <p className="text-[10px] text-rose-700 font-extrabold bg-rose-100/50 px-1.5 py-0.5 rounded inline-block mt-1">
+                                  Denda: Rp {loan.fine_amount.toLocaleString('id-ID')}
+                                </p>
+                              )}
+                            </div>
+                            <span
+                              className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase shrink-0 ${
+                                isOverdue
+                                  ? 'bg-rose-600 text-white shadow-3xs'
+                                  : 'bg-amber-500 text-white shadow-3xs'
+                              }`}
+                            >
+                              {loan.status}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400 italic py-6 text-center border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                      Semua buku telah dikembalikan.
+                    </p>
+                  )}
+                </div>
+
+                {/* Return History (Sudah Dikembalikan) */}
+                <div className="space-y-3">
+                  <h5 className="font-extrabold text-xs text-emerald-800 uppercase tracking-wider flex items-center gap-1.5 bg-emerald-50 px-2.5 py-2 rounded-xl border border-emerald-100/50">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Riwayat Selesai ({searchedHistoryLoans.length})
+                  </h5>
+                  {searchedHistoryLoans.length > 0 ? (
+                    <div className="space-y-3">
+                      {searchedHistoryLoans.map((loan) => (
+                        <div
+                          key={loan.id}
+                          className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-700 flex items-center justify-between gap-4 shadow-3xs"
+                        >
+                          <div className="min-w-0 space-y-1 text-left">
+                            <h5 className="font-bold text-xs truncate" title={loan.book_title}>{loan.book_title || 'Buku Tidak Diketahui'}</h5>
+                            <p className="text-[10px] text-slate-500 font-semibold">
+                              Pinjam: {loan.loan_date} | Kembali: {loan.return_date || '-'}
+                            </p>
+                          </div>
+                          <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase shrink-0 bg-emerald-100 text-emerald-850">
+                            Selesai
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400 italic py-6 text-center border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                      Belum ada riwayat pengembalian buku.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-6 space-y-2">
+              <AlertCircle className="w-8 h-8 text-rose-500 mx-auto" />
+              <h4 className="font-bold text-slate-800 text-sm">Anggota Tidak Ditemukan</h4>
+              <p className="text-xs text-slate-450 text-slate-400 max-w-sm mx-auto font-medium">
+                Kami tidak menemukan nomor anggota atau nama "{searchMemberNo}". Pastikan nomor NIS/NIP yang dimasukkan sudah terdaftar.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Catalog Tabs & Sorting Filters */}
+      <div id="koleksi-katalog" className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-3xs text-left">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {[
+            { id: 'all' as const, label: 'Temua Koleksi' },
+            { id: 'new' as const, label: 'Terbaru' },
+            { id: 'popular' as const, label: 'Terpopuler' },
+            { id: 'recommended' as const, label: 'Direkomendasikan' }
+          ].map((tab) => {
+            const isTabActive = activeCatalogTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveCatalogTab(tab.id)}
+                className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                  isTabActive
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold text-slate-400">Status:</span>
+          <select
+            value={availabilityFilter}
+            onChange={(e) => setAvailabilityFilter(e.target.value as any)}
+            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-705 text-slate-700 focus:outline-none cursor-pointer"
+          >
+            <option value="all">Semua Koleksi</option>
+            <option value="available">Tersedia Saja</option>
+            <option value="borrowed">Sedang Dipinjam</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Book Grid Area */}
+      {sortedAndFilteredBooks.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
-          {filteredBooks.map((book) => {
+          {sortedAndFilteredBooks.map((book) => {
             const isAvailable = book.available_stock > 0;
             return (
               <div
@@ -446,16 +812,22 @@ export const PublicCatalog: React.FC<PublicCatalogProps> = ({
       {/* Book Detail Modal */}
       {selectedBookDetail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-xl w-full overflow-hidden">
-            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
-              <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-                Detail Koleksi Perpustakaan
-              </span>
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200/80 max-w-xl w-full overflow-hidden text-left">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 shadow-3xs">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-sm sm:text-base leading-none">Detail Koleksi Buku</h3>
+                  <p className="text-[10px] sm:text-[11px] text-slate-450 text-slate-400 font-bold mt-1.5">Informasi buku perpustakaan</p>
+                </div>
+              </div>
               <button
                 onClick={() => setSelectedBookDetail(null)}
-                className="p-1 rounded-full hover:bg-white/20 text-slate-300"
+                className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
               >
-                <XCircle className="w-5 h-5" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
@@ -464,14 +836,14 @@ export const PublicCatalog: React.FC<PublicCatalogProps> = ({
                 <img
                   src={selectedBookDetail.cover_url}
                   alt={selectedBookDetail.title}
-                  className="w-full h-56 object-cover rounded-xl shadow-md border border-slate-200"
+                  className="w-full h-56 object-cover rounded-2xl shadow-md border border-slate-200"
                 />
-                <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-center space-y-1">
-                  <div className="text-[10px] font-bold text-emerald-800 uppercase">Status Stok</div>
-                  <div className="text-sm font-extrabold text-emerald-950">
-                    {selectedBookDetail.available_stock} dari {selectedBookDetail.stock} Eksemplar
+                <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100 text-center space-y-1 shadow-3xs">
+                  <div className="text-[9px] font-extrabold text-emerald-800 uppercase tracking-wider">Status Stok</div>
+                  <div className="text-xs font-black text-emerald-950">
+                    {selectedBookDetail.available_stock} dari {selectedBookDetail.stock} Buku
                   </div>
-                  <div className="text-[10px] text-emerald-700">
+                  <div className="text-[9px] text-emerald-700 font-bold">
                     {selectedBookDetail.available_stock > 0 ? 'Tersedia Dipinjam' : 'Sedang Habis Dipinjam'}
                   </div>
                 </div>
@@ -479,40 +851,40 @@ export const PublicCatalog: React.FC<PublicCatalogProps> = ({
 
               <div className="sm:col-span-2 space-y-4">
                 <div>
-                  <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold">
+                  <span className="px-2.5 py-0.5 bg-emerald-50 border border-emerald-150 text-emerald-800 rounded-full text-[10px] font-extrabold uppercase">
                     {selectedBookDetail.category}
                   </span>
-                  <h3 className="text-lg font-bold text-slate-900 mt-2">{selectedBookDetail.title}</h3>
-                  <p className="text-xs font-medium text-slate-500">Pengarang: {selectedBookDetail.author}</p>
+                  <h3 className="text-base font-black text-slate-900 mt-2 leading-snug">{selectedBookDetail.title}</h3>
+                  <p className="text-xs font-bold text-slate-500 mt-0.5">Pengarang: {selectedBookDetail.author}</p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50 p-3 rounded-2xl border border-slate-150 shadow-3xs">
                   <div>
-                    <span className="text-slate-400 block text-[10px]">Penerbit</span>
-                    <span className="font-semibold text-slate-800">{selectedBookDetail.publisher}</span>
+                    <span className="text-slate-400 block text-[9px] font-bold uppercase tracking-wider">Penerbit</span>
+                    <span className="font-bold text-slate-800 text-[11px]">{selectedBookDetail.publisher}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[10px]">Tahun Terbit</span>
-                    <span className="font-semibold text-slate-800">{selectedBookDetail.year}</span>
+                    <span className="text-slate-400 block text-[9px] font-bold uppercase tracking-wider">Tahun Terbit</span>
+                    <span className="font-bold text-slate-800 text-[11px]">{selectedBookDetail.year}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[10px]">Nomor ISBN</span>
-                    <span className="font-mono font-semibold text-slate-800">{selectedBookDetail.isbn}</span>
+                    <span className="text-slate-400 block text-[9px] font-bold uppercase tracking-wider">Nomor ISBN</span>
+                    <span className="font-mono font-bold text-slate-800 text-[11px]">{selectedBookDetail.isbn}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[10px]">Lokasi Rak</span>
-                    <span className="font-bold text-emerald-700">{selectedBookDetail.shelf_location}</span>
+                    <span className="text-slate-400 block text-[9px] font-bold uppercase tracking-wider">Lokasi Rak</span>
+                    <span className="font-black text-emerald-700 text-[11px]">{selectedBookDetail.shelf_location}</span>
                   </div>
                 </div>
 
                 <div>
-                  <h5 className="text-xs font-bold text-slate-800 mb-1">Deskripsi Ringkas</h5>
-                  <p className="text-xs text-slate-600 leading-relaxed">
+                  <h5 className="text-[11px] font-extrabold text-slate-800 mb-1 uppercase tracking-wider">Deskripsi Ringkas</h5>
+                  <p className="text-xs text-slate-500 font-semibold leading-relaxed">
                     {selectedBookDetail.description || 'Belum ada deskripsi tambahan untuk koleksi ini.'}
                   </p>
                 </div>
 
-                <div className="pt-3 border-t border-slate-100 flex flex-wrap gap-3">
+                <div className="pt-4 border-t border-slate-100 flex flex-wrap gap-3">
                   {selectedBookDetail.e_book_url && (
                     <button
                       onClick={() => {
@@ -520,7 +892,7 @@ export const PublicCatalog: React.FC<PublicCatalogProps> = ({
                         setSelectedBookDetail(null);
                         setSelectedPdfBook(bookToRead);
                       }}
-                      className="flex-1 min-w-[140px] py-2.5 bg-gradient-to-r from-blue-600 to-indigo-500 hover:from-blue-700 hover:to-indigo-600 text-white text-xs font-semibold rounded-xl shadow-xs flex items-center justify-center gap-2"
+                      className="flex-1 min-w-[120px] py-2.5 bg-gradient-to-r from-blue-600 to-indigo-500 hover:from-blue-700 hover:to-indigo-600 text-white text-xs font-extrabold rounded-xl shadow-md shadow-blue-600/10 flex items-center justify-center gap-2 cursor-pointer transition-all"
                     >
                       <BookOpen className="w-4 h-4" />
                       <span>Baca E-Book</span>
@@ -532,14 +904,14 @@ export const PublicCatalog: React.FC<PublicCatalogProps> = ({
                       setSelectedBookDetail(null);
                       setReserveBook(bookToReserve);
                     }}
-                    className="flex-1 min-w-[140px] py-2.5 bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white text-xs font-semibold rounded-xl shadow-xs flex items-center justify-center gap-2"
+                    className="flex-1 min-w-[120px] py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-xl shadow-md shadow-emerald-600/10 flex items-center justify-center gap-2 cursor-pointer transition-all"
                   >
                     <BookmarkCheck className="w-4 h-4" />
-                    <span>Reservasi Buku Ini</span>
+                    <span>Reservasi Buku</span>
                   </button>
                   <button
                     onClick={() => setSelectedBookDetail(null)}
-                    className="px-4 py-2.5 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-100"
+                    className="px-4 py-2.5 border border-slate-200 text-slate-500 hover:text-slate-800 text-xs font-extrabold rounded-xl hover:bg-slate-100 transition-all cursor-pointer"
                   >
                     Tutup
                   </button>
@@ -553,36 +925,41 @@ export const PublicCatalog: React.FC<PublicCatalogProps> = ({
       {/* Book Reservation Modal */}
       {reserveBook && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-md w-full overflow-hidden">
-            <div className="p-4 bg-gradient-to-r from-green-700 to-emerald-600 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <BookmarkCheck className="w-5 h-5 text-emerald-200" />
-                <h3 className="font-bold text-base">Form Reservasi Buku</h3>
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200/80 max-w-md w-full overflow-hidden text-left">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 shadow-3xs">
+                  <BookmarkCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-sm sm:text-base leading-none">Reservasi Buku</h3>
+                  <p className="text-[10px] sm:text-[11px] text-slate-450 text-slate-400 font-bold mt-1.5">Pesan buku perpustakaan secara mandiri</p>
+                </div>
               </div>
               <button
                 onClick={() => setReserveBook(null)}
-                className="p-1 rounded-full hover:bg-white/20 text-emerald-100"
+                className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
               >
-                <XCircle className="w-5 h-5" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleReservationSubmit} className="p-5 space-y-4">
+            <form onSubmit={handleReservationSubmit} className="p-6 space-y-4">
               {resSuccessMessage ? (
-                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs text-center space-y-2">
+                <div className="p-6 bg-emerald-50 border border-emerald-100 rounded-2xl text-emerald-800 text-xs text-center space-y-2.5 shadow-3xs">
                   <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
-                  <p className="font-bold">{resSuccessMessage}</p>
+                  <p className="font-extrabold text-sm">{resSuccessMessage}</p>
                 </div>
               ) : (
                 <>
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1">
-                    <span className="text-slate-400 text-[10px] block">Judul Buku Yang Direservasi:</span>
-                    <div className="font-bold text-slate-900">{reserveBook.title}</div>
-                    <div className="text-[11px] text-emerald-700">Rak: {reserveBook.shelf_location}</div>
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs space-y-1.5 shadow-3xs">
+                    <span className="text-slate-400 text-[9px] font-bold uppercase tracking-wider block">Judul Buku Yang Direservasi:</span>
+                    <div className="font-extrabold text-slate-900 text-sm">{reserveBook.title}</div>
+                    <div className="text-[10px] text-emerald-700 font-extrabold">Rak: {reserveBook.shelf_location}</div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label className="block text-xs font-extrabold text-slate-700 mb-1">
                       Nama Lengkap (Siswa / Guru) *
                     </label>
                     <input
@@ -590,13 +967,13 @@ export const PublicCatalog: React.FC<PublicCatalogProps> = ({
                       value={resName}
                       onChange={(e) => setResName(e.target.value)}
                       placeholder="Contoh: Muhammad Rayhan"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label className="block text-xs font-extrabold text-slate-700 mb-1">
                       NIS (Siswa) atau NIP (Guru) *
                     </label>
                     <input
@@ -604,13 +981,13 @@ export const PublicCatalog: React.FC<PublicCatalogProps> = ({
                       value={resNumber}
                       onChange={(e) => setResNumber(e.target.value)}
                       placeholder="Contoh: 20237001"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-mono font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label className="block text-xs font-extrabold text-slate-700 mb-1">
                       No. HP / WhatsApp (Aktif)
                     </label>
                     <input
@@ -618,34 +995,34 @@ export const PublicCatalog: React.FC<PublicCatalogProps> = ({
                       value={resPhone}
                       onChange={(e) => setResPhone(e.target.value)}
                       placeholder="Contoh: 081234567890"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label className="block text-xs font-extrabold text-slate-700 mb-1">
                       Catatan Tambahan (Opsional)
                     </label>
                     <textarea
                       value={resNotes}
                       onChange={(e) => setResNotes(e.target.value)}
-                      placeholder="Rencana tanggal pengambil..."
+                      placeholder="Tulis rencana tanggal pengambilan buku..."
                       rows={2}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs"
                     />
                   </div>
 
-                  <div className="pt-2 flex justify-end gap-2">
+                  <div className="pt-4 border-t border-slate-100 flex justify-end gap-2">
                     <button
                       type="button"
                       onClick={() => setReserveBook(null)}
-                      className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+                      className="px-4 py-2.5 text-xs font-extrabold text-slate-500 hover:bg-slate-150 rounded-xl transition-all cursor-pointer"
                     >
                       Batal
                     </button>
                     <button
                       type="submit"
-                      className="px-5 py-2 bg-gradient-to-r from-green-600 to-emerald-500 text-white text-xs font-semibold rounded-xl shadow-xs"
+                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-xl shadow-md shadow-emerald-600/10 hover:shadow-lg transition-all cursor-pointer"
                     >
                       Kirim Reservasi
                     </button>

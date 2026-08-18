@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Book, BookCategory, LibrarySettings } from '../../types';
 import { ImageUploader } from '../ImageUploader';
+import { BulkQRPrintModal } from './BulkQRPrintModal';
 import {
   Plus,
   Search,
@@ -8,12 +9,14 @@ import {
   Trash2,
   Barcode as BarcodeIcon,
   BookOpen,
-  Filter,
   CheckCircle2,
   XCircle,
   MapPin,
-  Upload,
-  Image as ImageIcon,
+  X,
+  QrCode,
+  Printer,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 
 interface BooksManagementViewProps {
@@ -23,6 +26,7 @@ interface BooksManagementViewProps {
   onUpdateBook: (book: Book) => void;
   onDeleteBook: (id: string) => void;
   onOpenBarcodeModal: (book: Book) => void;
+  onMarkQrPrinted: (bookIds: string[], count: number) => void;
 }
 
 export const BooksManagementView: React.FC<BooksManagementViewProps> = ({
@@ -32,11 +36,15 @@ export const BooksManagementView: React.FC<BooksManagementViewProps> = ({
   onUpdateBook,
   onDeleteBook,
   onOpenBarcodeModal,
+  onMarkQrPrinted,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Semua');
+  const [filterQr, setFilterQr] = useState<'all' | 'printed' | 'unprinted'>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBook, setEditingBook] = useState<Book | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBulkPrintOpen, setIsBulkPrintOpen] = useState(false);
 
   // Form Fields
   const [title, setTitle] = useState('');
@@ -74,15 +82,47 @@ export const BooksManagementView: React.FC<BooksManagementViewProps> = ({
         b.isbn.includes(searchTerm) ||
         b.barcode.includes(searchTerm);
       const matchCat = selectedCategory === 'Semua' || b.category === selectedCategory;
-      return matchSearch && matchCat;
+      const printed = (b.qr_printed_count ?? 0) >= b.stock;
+      const matchQr =
+        filterQr === 'all' ||
+        (filterQr === 'printed' && printed) ||
+        (filterQr === 'unprinted' && !printed);
+      return matchSearch && matchCat && matchQr;
     });
-  }, [books, searchTerm, selectedCategory]);
+  }, [books, searchTerm, selectedCategory, filterQr]);
 
   const totalPages = Math.ceil(filteredBooks.length / itemsPerPage) || 1;
   const paginatedBooks = filteredBooks.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
+
+  // Checkbox helpers
+  const allPageSelected = paginatedBooks.length > 0 && paginatedBooks.every((b) => selectedIds.has(b.id));
+  const toggleAll = () => {
+    if (allPageSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        paginatedBooks.forEach((b) => next.delete(b.id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        paginatedBooks.forEach((b) => next.add(b.id));
+        return next;
+      });
+    }
+  };
+  const toggleOne = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+  const selectedBooks = books.filter((b) => selectedIds.has(b.id));
+  const totalQrToPrint = selectedBooks.reduce((s, b) => s + b.stock, 0);
 
   const openAddModal = () => {
     setEditingBook(null);
@@ -170,17 +210,29 @@ export const BooksManagementView: React.FC<BooksManagementViewProps> = ({
             Manajemen Koleksi Buku Perpustakaan
           </h2>
           <p className="text-xs text-slate-500">
-            Kelola data buku, nomor ISBN, stok eksemplar, dan cetak label rak barcode
+            {books.length} judul terdaftar • {books.reduce((s, b) => s + b.stock, 0)} total eksemplar •{' '}
+            {books.filter((b) => (b.qr_printed_count ?? 0) >= b.stock).length} judul QR sudah tercetak
           </p>
         </div>
 
-        <button
-          onClick={openAddModal}
-          className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white font-semibold text-xs rounded-xl shadow-xs flex items-center gap-2 shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Tambah Buku Baru</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {selectedIds.size > 0 && (
+            <button
+              onClick={() => setIsBulkPrintOpen(true)}
+              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer"
+            >
+              <Printer className="w-4 h-4" />
+              <span>Cetak QR ({totalQrToPrint} lembar)</span>
+            </button>
+          )}
+          <button
+            onClick={openAddModal}
+            className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white font-semibold text-xs rounded-xl shadow-xs flex items-center gap-2 shrink-0 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Tambah Buku Baru</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter & Search Controls */}
@@ -199,20 +251,28 @@ export const BooksManagementView: React.FC<BooksManagementViewProps> = ({
           />
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           <span className="text-xs font-semibold text-slate-500">Kategori:</span>
           <select
             value={selectedCategory}
-            onChange={(e) => {
-              setSelectedCategory(e.target.value);
-              setCurrentPage(1);
-            }}
+            onChange={(e) => { setSelectedCategory(e.target.value); setCurrentPage(1); }}
             className="px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           >
             <option value="Semua">Semua Kategori</option>
             {categories.map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
+          </select>
+
+          <span className="text-xs font-semibold text-slate-500">Status QR:</span>
+          <select
+            value={filterQr}
+            onChange={(e) => { setFilterQr(e.target.value as any); setCurrentPage(1); }}
+            className="px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          >
+            <option value="all">Semua</option>
+            <option value="printed">✓ Sudah Dicetak</option>
+            <option value="unprinted">✗ Belum Dicetak</option>
           </select>
         </div>
       </div>
@@ -223,18 +283,39 @@ export const BooksManagementView: React.FC<BooksManagementViewProps> = ({
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50 text-slate-500 font-bold uppercase text-[10px]">
-                <th className="py-3.5 px-4">Sampul & Judul Buku</th>
-                <th className="py-3.5 px-4">Pengarang & Penerbit</th>
+                <th className="py-3.5 px-3">
+                  <button onClick={toggleAll} className="cursor-pointer text-emerald-600">
+                    {allPageSelected
+                      ? <CheckSquare className="w-4 h-4" />
+                      : <Square className="w-4 h-4 text-slate-400" />}
+                  </button>
+                </th>
+                <th className="py-3.5 px-4">Sampul &amp; Judul Buku</th>
+                <th className="py-3.5 px-4">Pengarang &amp; Penerbit</th>
                 <th className="py-3.5 px-4">ISBN / Barcode</th>
-                <th className="py-3.5 px-4">Kategori & Rak</th>
-                <th className="py-3.5 px-4 text-center">Stok (Tersedia/Total)</th>
+                <th className="py-3.5 px-4">Kategori &amp; Rak</th>
+                <th className="py-3.5 px-4 text-center">Stok &amp; QR Status</th>
                 <th className="py-3.5 px-4 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {paginatedBooks.length > 0 ? (
-                paginatedBooks.map((book) => (
-                  <tr key={book.id} className="hover:bg-slate-50/80 transition-colors">
+                paginatedBooks.map((book) => {
+                  const printed = book.qr_printed_count ?? 0;
+                  const total = book.stock;
+                  const allPrinted = printed >= total;
+                  const partialPrinted = printed > 0 && printed < total;
+                  return (
+                  <tr key={book.id} className={`hover:bg-slate-50/80 transition-colors ${selectedIds.has(book.id) ? 'bg-emerald-50/40' : ''}`}>
+                    {/* Checkbox */}
+                    <td className="py-3.5 px-3">
+                      <button onClick={() => toggleOne(book.id)} className="cursor-pointer text-emerald-600">
+                        {selectedIds.has(book.id)
+                          ? <CheckSquare className="w-4 h-4" />
+                          : <Square className="w-4 h-4 text-slate-300" />}
+                      </button>
+                    </td>
+
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-3">
                         <img
@@ -271,30 +352,43 @@ export const BooksManagementView: React.FC<BooksManagementViewProps> = ({
                       </div>
                     </td>
 
-                    <td className="py-3.5 px-4 text-center">
-                      <span
-                        className={`inline-block px-2 py-1 rounded-lg text-xs font-bold ${
-                          book.available_stock > 0
-                            ? 'bg-emerald-100 text-emerald-900'
-                            : 'bg-rose-100 text-rose-800'
-                        }`}
-                      >
+                    {/* Stok + QR Status */}
+                    <td className="py-3.5 px-4 text-center space-y-1.5">
+                      <span className={`inline-block px-2 py-1 rounded-lg text-xs font-bold ${
+                        book.available_stock > 0 ? 'bg-emerald-100 text-emerald-900' : 'bg-rose-100 text-rose-800'
+                      }`}>
                         {book.available_stock} / {book.stock}
                       </span>
+                      {/* QR printed badge */}
+                      <div>
+                        {allPrinted ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[9px] font-extrabold">
+                            <QrCode className="w-2.5 h-2.5" /> QR Tercetak Semua
+                          </span>
+                        ) : partialPrinted ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-[9px] font-extrabold">
+                            <QrCode className="w-2.5 h-2.5" /> {printed}/{total} Tercetak
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-500 border border-slate-200 rounded-full text-[9px] font-extrabold">
+                            <QrCode className="w-2.5 h-2.5" /> Belum Cetak
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     <td className="py-3.5 px-4 text-center">
                       <div className="flex items-center justify-center gap-1">
                         <button
                           onClick={() => onOpenBarcodeModal(book)}
-                          className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
+                          className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors cursor-pointer"
                           title="Cetak Barcode & QR Label"
                         >
                           <BarcodeIcon className="w-4 h-4 text-emerald-700" />
                         </button>
                         <button
                           onClick={() => openEditModal(book)}
-                          className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
+                          className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors cursor-pointer"
                           title="Edit Buku"
                         >
                           <Edit3 className="w-4 h-4 text-blue-600" />
@@ -305,7 +399,7 @@ export const BooksManagementView: React.FC<BooksManagementViewProps> = ({
                               onDeleteBook(book.id);
                             }
                           }}
-                          className="p-1.5 bg-slate-100 hover:bg-rose-100 text-slate-700 hover:text-rose-600 rounded-lg transition-colors"
+                          className="p-1.5 bg-slate-100 hover:bg-rose-100 text-slate-700 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
                           title="Hapus Buku"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -313,10 +407,11 @@ export const BooksManagementView: React.FC<BooksManagementViewProps> = ({
                       </div>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               ) : (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-400">
+                  <td colSpan={7} className="py-8 text-center text-slate-400">
                     Tidak ada koleksi buku yang ditemukan.
                   </td>
                 </tr>
@@ -356,25 +451,35 @@ export const BooksManagementView: React.FC<BooksManagementViewProps> = ({
           onClick={() => setIsModalOpen(false)}
         >
           <div
-            className="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-2xl w-full overflow-hidden max-h-[90vh] flex flex-col"
+            className="bg-white rounded-3xl shadow-2xl border border-slate-200/80 max-w-2xl w-full overflow-hidden max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-4 bg-gradient-to-r from-green-700 to-emerald-600 text-white flex items-center justify-between shrink-0">
-              <h3 className="font-bold text-base">
-                {editingBook ? 'Edit Data Buku' : 'Tambah Koleksi Buku Baru'}
-              </h3>
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between shrink-0 text-left">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 shadow-3xs">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-sm sm:text-base leading-none">
+                    {editingBook ? 'Edit Data Buku' : 'Tambah Koleksi Buku Baru'}
+                  </h3>
+                  <p className="text-[10px] sm:text-[11px] text-slate-400 font-bold mt-1.5">
+                    {editingBook ? 'Sesuaikan informasi detail buku perpustakaan' : 'Masukkan informasi buku perpustakaan baru'}
+                  </p>
+                </div>
+              </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded-full hover:bg-white/20 text-emerald-100"
+                className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
               >
-                <XCircle className="w-5 h-5" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4">
+            <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 text-left">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-extrabold text-slate-700 mb-1">
                     Judul Buku *
                   </label>
                   <input
@@ -382,53 +487,53 @@ export const BooksManagementView: React.FC<BooksManagementViewProps> = ({
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="Contoh: Fiqih untuk MTs Kelas VIII"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Pengarang *</label>
+                  <label className="block text-xs font-extrabold text-slate-700 mb-1">Pengarang *</label>
                   <input
                     type="text"
                     value={author}
                     onChange={(e) => setAuthor(e.target.value)}
                     placeholder="Nama Pengarang / Penulis"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Penerbit *</label>
+                  <label className="block text-xs font-extrabold text-slate-700 mb-1">Penerbit *</label>
                   <input
                     type="text"
                     value={publisher}
                     onChange={(e) => setPublisher(e.target.value)}
                     placeholder="Nama Penerbit"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Nomor ISBN *</label>
+                  <label className="block text-xs font-extrabold text-slate-700 mb-1">Nomor ISBN *</label>
                   <input
                     type="text"
                     value={isbn}
                     onChange={(e) => setIsbn(e.target.value)}
                     placeholder="978-602-xxx-xxx"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-mono font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Kategori Buku *</label>
+                  <label className="block text-xs font-extrabold text-slate-700 mb-1">Kategori Buku *</label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value as BookCategory)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs cursor-pointer"
                   >
                     {categories.map((c) => (
                       <option key={c} value={c}>{c}</option>
@@ -437,29 +542,29 @@ export const BooksManagementView: React.FC<BooksManagementViewProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Tahun Terbit</label>
+                  <label className="block text-xs font-extrabold text-slate-700 mb-1">Tahun Terbit</label>
                   <input
                     type="number"
                     value={year}
                     onChange={(e) => setYear(parseInt(e.target.value) || 2023)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Lokasi Rak *</label>
+                  <label className="block text-xs font-extrabold text-slate-700 mb-1">Lokasi Rak *</label>
                   <input
                     type="text"
                     value={shelfLocation}
                     onChange={(e) => setShelfLocation(e.target.value)}
                     placeholder="Contoh: Rak A-01 (Fiqih)"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Total Stok</label>
+                  <label className="block text-xs font-extrabold text-slate-700 mb-1">Total Stok</label>
                   <input
                     type="number"
                     min="1"
@@ -469,19 +574,19 @@ export const BooksManagementView: React.FC<BooksManagementViewProps> = ({
                       setStock(val);
                       if (!editingBook) setAvailableStock(val);
                     }}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 font-bold"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-extrabold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Stok Tersedia</label>
+                  <label className="block text-xs font-extrabold text-slate-700 mb-1">Stok Tersedia</label>
                   <input
                     type="number"
                     min="0"
                     max={stock}
                     value={availableStock}
                     onChange={(e) => setAvailableStock(parseInt(e.target.value) || 0)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-emerald-800"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-extrabold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs text-emerald-800"
                   />
                 </div>
 
@@ -499,7 +604,7 @@ export const BooksManagementView: React.FC<BooksManagementViewProps> = ({
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-extrabold text-slate-700 mb-1">
                     Deskripsi / Sinopsis Buku
                   </label>
                   <textarea
@@ -507,12 +612,12 @@ export const BooksManagementView: React.FC<BooksManagementViewProps> = ({
                     onChange={(e) => setDescription(e.target.value)}
                     rows={2}
                     placeholder="Ringkasan isi materi buku..."
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs"
                   />
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-extrabold text-slate-700 mb-1">
                     Link File E-Book / PDF (Opsional)
                   </label>
                   <input
@@ -520,9 +625,9 @@ export const BooksManagementView: React.FC<BooksManagementViewProps> = ({
                     value={eBookUrl}
                     onChange={(e) => setEBookUrl(e.target.value)}
                     placeholder="https://drive.google.com/file/d/... atau https://res.cloudinary.com/.../file.pdf"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-mono font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs"
                   />
-                  <p className="text-[10px] text-slate-400 mt-1">
+                  <p className="text-[10px] text-slate-400 font-bold mt-1.5">
                     Masukkan link Google Drive atau link file PDF langsung. Buku akan otomatis tersedia di menu E-Library.
                   </p>
                 </div>
@@ -532,13 +637,13 @@ export const BooksManagementView: React.FC<BooksManagementViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+                  className="px-4 py-2.5 text-xs font-extrabold text-slate-500 hover:bg-slate-150 rounded-xl transition-all cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-gradient-to-r from-green-600 to-emerald-500 text-white text-xs font-semibold rounded-xl shadow-xs"
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-xl shadow-md shadow-emerald-600/10 hover:shadow-lg transition-all cursor-pointer"
                 >
                   Simpan Data Buku
                 </button>
@@ -546,6 +651,19 @@ export const BooksManagementView: React.FC<BooksManagementViewProps> = ({
             </form>
           </div>
         </div>
+      )}
+
+      {/* Bulk QR Print Modal */}
+      {isBulkPrintOpen && (
+        <BulkQRPrintModal
+          selectedBooks={selectedBooks}
+          settings={settings}
+          onClose={() => setIsBulkPrintOpen(false)}
+          onPrintDone={(ids) => {
+            onMarkQrPrinted(ids, 0); // count handled inside onMarkQrPrinted per book
+            setSelectedIds(new Set());
+          }}
+        />
       )}
     </div>
   );

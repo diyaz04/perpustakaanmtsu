@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import { Camera, X, CheckCircle2, AlertCircle, ScanLine, Usb, Zap, Keyboard } from 'lucide-react';
+import { Camera, X, CheckCircle2, AlertCircle, ScanLine, Zap } from 'lucide-react';
+import { Book, Member } from '../types';
 
 interface BarcodeScannerModalProps {
   isOpen: boolean;
@@ -8,6 +9,8 @@ interface BarcodeScannerModalProps {
   onScanSuccess: (code: string) => void;
   title?: string;
   placeholderText?: string;
+  books: Book[];
+  members: Member[];
 }
 
 export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
@@ -15,28 +18,30 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   onClose,
   onScanSuccess,
   title = 'Scan Barcode / QR Code',
-  placeholderText = 'Arahkan kamera ke barcode buku atau QR kartu anggota',
+  books = [],
+  members = [],
 }) => {
-  const [activeTab, setActiveTab] = useState<'gun' | 'camera' | 'manual'>('gun');
-  const [manualCode, setManualCode] = useState('');
-  const [gunCode, setGunCode] = useState('');
+  const [code, setCode] = useState('');
+  const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
 
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
-  const gunInputRef = useRef<HTMLInputElement>(null);
+  const codeInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto focus physical scanner input whenever modal opens or switching to 'gun' tab
+  // Auto focus input when modal opens or camera is deactivated
   useEffect(() => {
-    if (isOpen && activeTab === 'gun') {
-      setTimeout(() => {
-        gunInputRef.current?.focus();
-      }, 100);
+    if (isOpen && !isCameraActive) {
+      const timeout = setTimeout(() => {
+        codeInputRef.current?.focus();
+      }, 150);
+      return () => clearTimeout(timeout);
     }
-  }, [isOpen, activeTab]);
+  }, [isOpen, isCameraActive]);
 
+  // QR/Barcode camera scanner instance controller
   useEffect(() => {
-    if (!isOpen) {
+    if (!isOpen || !isCameraActive) {
       if (scannerRef.current) {
         scannerRef.current.clear().catch(console.error);
         scannerRef.current = null;
@@ -44,79 +49,86 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
       return;
     }
 
-    if (activeTab === 'camera') {
-      setCameraError(null);
-      setIsScanning(true);
+    setCameraError(null);
+    setIsScanning(true);
 
-      const timeout = setTimeout(() => {
-        try {
-          const scanner = new Html5QrcodeScanner(
-            'html5qr-code-full-region',
-            {
-              fps: 10,
-              qrbox: { width: 250, height: 250 },
-              aspectRatio: 1.0,
-            },
-            /* verbose= */ false
-          );
+    const timeout = setTimeout(() => {
+      try {
+        const scanner = new Html5QrcodeScanner(
+          'html5qr-code-full-region',
+          {
+            fps: 10,
+            qrbox: { width: 220, height: 220 },
+            aspectRatio: 1.0,
+          },
+          /* verbose= */ false
+        );
 
-          scanner.render(
-            (decodedText) => {
-              onScanSuccess(decodedText);
-              scanner.clear().catch(console.error);
-              onClose();
-            },
-            (error) => {
-              // Ignore standard frame scan errors
-            }
-          );
+        scanner.render(
+          (decodedText) => {
+            onScanSuccess(decodedText);
+            scanner.clear().catch(console.error);
+            setIsCameraActive(false);
+            onClose();
+          },
+          (error) => {
+            // Ignore standard frame scan errors
+          }
+        );
 
-          scannerRef.current = scanner;
-        } catch (err: any) {
-          console.error('Camera scan init error:', err);
-          setCameraError('Kamera tidak terdeteksi atau izin ditolak. Silakan gunakan Scanner USB atau Input Manual.');
-        } finally {
-          setIsScanning(false);
-        }
-      }, 300);
+        scannerRef.current = scanner;
+      } catch (err: any) {
+        console.error('Camera scan init error:', err);
+        setCameraError('Kamera tidak terdeteksi atau izin ditolak. Silakan gunakan scanner fisik atau masukkan kode manual.');
+        setIsCameraActive(false);
+      } finally {
+        setIsScanning(false);
+      }
+    }, 300);
 
-      return () => {
-        clearTimeout(timeout);
-        if (scannerRef.current) {
-          scannerRef.current.clear().catch(console.error);
-          scannerRef.current = null;
-        }
-      };
-    }
-  }, [isOpen, activeTab]);
+    return () => {
+      clearTimeout(timeout);
+      if (scannerRef.current) {
+        scannerRef.current.clear().catch(console.error);
+        scannerRef.current = null;
+      }
+    };
+  }, [isOpen, isCameraActive]);
+
+  // Generate real preset codes from existing books and members (no fallbacks)
+  const presetCodes = useMemo(() => {
+    const list: { label: string; code: string }[] = [];
+
+    // Add first 3 real books
+    books.slice(0, 3).forEach((b) => {
+      list.push({
+        label: `Buku: ${b.title} (${b.barcode})`,
+        code: b.barcode,
+      });
+    });
+
+    // Add first 3 real members
+    members.slice(0, 3).forEach((m) => {
+      list.push({
+        label: `${m.role === 'guru' ? 'Guru' : 'Siswa'}: ${m.name} (${m.member_number})`,
+        code: m.member_number,
+      });
+    });
+
+    return list;
+  }, [books, members]);
 
   if (!isOpen) return null;
 
-  const handleGunSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (gunCode.trim()) {
-      onScanSuccess(gunCode.trim());
-      setGunCode('');
+    if (code.trim()) {
+      onScanSuccess(code.trim());
+      setCode('');
+      setIsCameraActive(false);
       onClose();
     }
   };
-
-  const handleManualSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (manualCode.trim()) {
-      onScanSuccess(manualCode.trim());
-      setManualCode('');
-      onClose();
-    }
-  };
-
-  const presetCodes = [
-    { label: 'Buku Fiqih (9786022931021)', code: '9786022931021' },
-    { label: 'Buku Akidah (9786022932059)', code: '9786022932059' },
-    { label: 'Siswa Rayhan (20237001)', code: '20237001' },
-    { label: 'Siswa Aisyah (20237012)', code: '20237012' },
-    { label: 'Guru Ust. Nurul (197805142005011002)', code: '197805142005011002' },
-  ];
 
   return (
     <div
@@ -124,201 +136,135 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-lg w-full overflow-hidden"
+        className="bg-white rounded-3xl shadow-2xl border border-slate-200/80 max-w-lg w-full overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-green-700 via-emerald-600 to-green-800 p-4 text-white flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <ScanLine className="w-6 h-6 text-emerald-300" />
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between shrink-0 text-left">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 shadow-3xs">
+              <ScanLine className="w-5 h-5" />
+            </div>
             <div>
-              <h3 className="font-bold text-base leading-tight">{title}</h3>
-              <p className="text-[11px] text-emerald-100">Kamera HP &amp; Support Scanner Minimarket (USB / Wireless)</p>
+              <h3 className="font-extrabold text-slate-900 text-sm sm:text-base leading-none">{title}</h3>
+              <p className="text-[10px] sm:text-[11px] text-slate-400 font-bold mt-1.5 font-semibold">Tembak laser scanner, ketik manual, atau pakai kamera HP</p>
             </div>
           </div>
           <button
-            onClick={onClose}
-            className="p-1 rounded-full hover:bg-white/20 text-white transition-colors cursor-pointer"
+            onClick={() => {
+              setIsCameraActive(false);
+              onClose();
+            }}
+            className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
             title="Tutup"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Tab Selector */}
-        <div className="flex border-b border-slate-200 bg-slate-50">
-          <button
-            onClick={() => setActiveTab('gun')}
-            className={`flex-1 py-3 text-xs font-bold flex items-center justify-center gap-1.5 border-b-2 transition-colors cursor-pointer ${
-              activeTab === 'gun'
-                ? 'border-emerald-600 text-emerald-800 bg-white'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <Usb className="w-4 h-4 text-emerald-600" />
-            Scanner Minimarket (USB/BT)
-          </button>
-          <button
-            onClick={() => setActiveTab('camera')}
-            className={`flex-1 py-3 text-xs font-bold flex items-center justify-center gap-1.5 border-b-2 transition-colors cursor-pointer ${
-              activeTab === 'camera'
-                ? 'border-emerald-600 text-emerald-800 bg-white'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <Camera className="w-4 h-4 text-slate-600" />
-            Kamera HP / Web
-          </button>
-          <button
-            onClick={() => setActiveTab('manual')}
-            className={`flex-1 py-3 text-xs font-bold flex items-center justify-center gap-1.5 border-b-2 transition-colors cursor-pointer ${
-              activeTab === 'manual'
-                ? 'border-emerald-600 text-emerald-800 bg-white'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <Keyboard className="w-4 h-4 text-slate-600" />
-            Input Manual
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="p-5">
-          {activeTab === 'gun' ? (
-            <div className="space-y-4">
-              <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl space-y-1.5 text-xs text-emerald-900">
-                <div className="font-bold text-emerald-800 flex items-center gap-1.5">
-                  <Zap className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>Support 100% Scanner Barcode Minimarket (Plug &amp; Play)</span>
-                </div>
-                <p className="text-[11.5px] leading-relaxed text-slate-700">
-                  Tancapkan kabel <strong>USB Scanner / Receiver Wireless Minimarket</strong> ke komputer/laptop. Tembakkan laser ke Barcode / QR Code, hasil scan akan otomatis diproses instan tanpa perlu klik tombol!
-                </p>
+        {/* Unified Body */}
+        <div className="p-6 space-y-4 text-left">
+          {/* Main Input for Hardware Scanner & Manual Type */}
+          <form onSubmit={handleSubmit} className="space-y-2">
+            <label className="block text-xs font-extrabold text-slate-700">
+              Ketik Kode / Tembakkan Barcode Scanner
+            </label>
+            <div className="relative">
+              <input
+                ref={codeInputRef}
+                type="text"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="Tembakkan laser scanner atau ketik di sini..."
+                className="w-full px-4 py-3 bg-slate-50 focus:bg-white border-2 border-emerald-500 rounded-xl text-sm font-mono font-bold text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all shadow-inner"
+                autoFocus
+              />
+              <div className="absolute right-3.5 top-3.5 flex items-center gap-1.5 pointer-events-none">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                <span className="text-[9px] font-black text-emerald-700 uppercase tracking-wider">Siap Scan</span>
               </div>
+            </div>
+            <div className="flex justify-between items-center text-[10px] text-slate-450 text-slate-400 font-bold pt-1">
+              <span>Sistem mendeteksi tombol <code>ENTER</code> otomatis dari hardware scanner.</span>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md shadow-emerald-600/10 hover:shadow-lg transition-all cursor-pointer"
+              >
+                Proses Kode
+              </button>
+            </div>
+          </form>
 
-              <form onSubmit={handleGunSubmit} className="space-y-3">
-                <div className="relative">
-                  <input
-                    ref={gunInputRef}
-                    type="text"
-                    value={gunCode}
-                    onChange={(e) => setGunCode(e.target.value)}
-                    placeholder="Tembakkan Scanner Minimarket di sini..."
-                    className="w-full px-4 py-3 bg-white border-2 border-emerald-500 rounded-xl text-sm font-mono font-bold text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-100 shadow-inner"
-                    autoFocus
-                  />
-                  <div className="absolute right-3 top-3.5 flex items-center gap-1">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-                    <span className="text-[10px] font-bold text-emerald-700 uppercase">Siap Scan</span>
+          {/* Camera Scanner Toggle section */}
+          <div className="border-t border-slate-100 pt-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-extrabold text-slate-700">
+                <Camera className="w-4 h-4 text-slate-500" />
+                <span>Scan Menggunakan Kamera HP / Web</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCameraActive(!isCameraActive)}
+                className={`px-3 py-1.5 text-xs font-extrabold rounded-xl transition-all cursor-pointer border ${
+                  isCameraActive
+                    ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                    : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                }`}
+              >
+                {isCameraActive ? 'Matikan Kamera' : 'Aktifkan Kamera'}
+              </button>
+            </div>
+
+            {isCameraActive && (
+              <div className="animate-in slide-in-from-top-2 duration-200">
+                {cameraError ? (
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-amber-800 text-xs text-center space-y-2 shadow-3xs">
+                    <AlertCircle className="w-5 h-5 text-amber-600 mx-auto animate-bounce" />
+                    <p className="font-semibold">{cameraError}</p>
                   </div>
-                </div>
-
-                <div className="flex justify-between items-center text-[11px] text-slate-500">
-                  <span>Sistem mendeteksi tombol <code>ENTER</code> otomatis dari hardware scanner.</span>
-                  <button
-                    type="submit"
-                    className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer"
-                  >
-                    Proses Kode
-                  </button>
-                </div>
-              </form>
-
-              <div className="pt-3 border-t border-slate-100">
-                <p className="text-[11px] font-semibold text-slate-500 mb-2">
-                  Atau klik sampel kode untuk uji coba cepat tanpa alat:
-                </p>
-                <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                  {presetCodes.map((preset) => (
-                    <button
-                      key={preset.code}
-                      onClick={() => {
-                        onScanSuccess(preset.code);
-                        onClose();
-                      }}
-                      className="w-full text-left px-3 py-1.5 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-lg text-xs font-medium text-slate-800 flex items-center justify-between transition-colors cursor-pointer"
-                    >
-                      <span>{preset.label}</span>
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    </button>
-                  ))}
-                </div>
+                ) : (
+                  <div className="relative min-h-[260px] bg-slate-950 rounded-2xl overflow-hidden flex items-center justify-center border border-slate-200">
+                    <div id="html5qr-code-full-region" className="w-full text-white"></div>
+                  </div>
+                )}
               </div>
-            </div>
-          ) : activeTab === 'camera' ? (
-            <div>
-              <p className="text-xs text-slate-500 text-center mb-3">{placeholderText}</p>
+            )}
+          </div>
 
-              {cameraError ? (
-                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm text-center my-4 space-y-2">
-                  <AlertCircle className="w-6 h-6 text-amber-600 mx-auto" />
-                  <p>{cameraError}</p>
+          {/* Real Preset/Sample Codes — only shown when database has data */}
+          {presetCodes.length > 0 && (
+            <div className="border-t border-slate-100 pt-4">
+              <span className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">
+                Sampel Kode Riil Di Database (Untuk Tes Cepat):
+              </span>
+              <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                {presetCodes.map((preset) => (
                   <button
-                    onClick={() => setActiveTab('gun')}
-                    className="inline-block px-4 py-2 bg-emerald-700 text-white rounded-lg text-xs font-semibold hover:bg-emerald-800 cursor-pointer"
+                    key={preset.code}
+                    onClick={() => {
+                      onScanSuccess(preset.code);
+                      setIsCameraActive(false);
+                      onClose();
+                    }}
+                    className="w-full text-left px-3.5 py-2 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-xl text-xs font-semibold text-slate-700 flex items-center justify-between transition-all cursor-pointer shadow-3xs"
                   >
-                    Beralih ke Scanner USB Minimarket
+                    <span className="truncate">{preset.label}</span>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 ml-2" />
                   </button>
-                </div>
-              ) : (
-                <div className="relative min-h-[280px] bg-slate-900 rounded-xl overflow-hidden flex items-center justify-center">
-                  <div id="html5qr-code-full-region" className="w-full text-white"></div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <form onSubmit={handleManualSubmit} className="space-y-3">
-                <label className="block text-xs font-semibold text-slate-700">
-                  Ketik Nomor Barcode / NIS / NIP / ISBN
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={manualCode}
-                    onChange={(e) => setManualCode(e.target.value)}
-                    placeholder="Contoh: 9786022931021 atau 20237001"
-                    className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    autoFocus
-                  />
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-500 text-white text-sm font-medium rounded-lg hover:from-green-700 hover:to-emerald-600 shadow-xs cursor-pointer"
-                  >
-                    Proses
-                  </button>
-                </div>
-              </form>
-
-              <div className="pt-3 border-t border-slate-100">
-                <p className="text-xs font-semibold text-slate-500 mb-2">
-                  Kode sampel untuk tes:
-                </p>
-                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                  {presetCodes.map((preset) => (
-                    <button
-                      key={preset.code}
-                      onClick={() => {
-                        onScanSuccess(preset.code);
-                        onClose();
-                      }}
-                      className="w-full text-left px-3 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/60 rounded-lg text-xs font-medium text-emerald-900 flex items-center justify-between transition-colors cursor-pointer"
-                    >
-                      <span>{preset.label}</span>
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    </button>
-                  ))}
-                </div>
+                ))}
               </div>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="bg-slate-50 px-5 py-3 border-t border-slate-100 flex justify-end">
+        <div className="bg-slate-50 px-6 py-3 border-t border-slate-100 flex justify-end shrink-0">
           <button
-            onClick={onClose}
-            className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-800 rounded-lg border border-slate-200 hover:bg-slate-100 cursor-pointer"
+            onClick={() => {
+              setIsCameraActive(false);
+              onClose();
+            }}
+            className="px-4 py-2.5 text-xs font-extrabold text-slate-500 hover:bg-slate-150 rounded-xl transition-all cursor-pointer"
           >
             Batal
           </button>
@@ -327,4 +273,3 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     </div>
   );
 };
-

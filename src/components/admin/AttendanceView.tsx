@@ -101,7 +101,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
             Absensi Digital Kunjungan Perpustakaan (Akreditasi)
           </h2>
           <p className="text-xs text-slate-500">
-            Siswa/Guru scan kartu anggota saat masuk perpus untuk pendataan grafik pengunjung harian
+            Catat kunjungan manual untuk pengunjung yang tidak melakukan aktivitas peminjaman atau pengembalian buku
           </p>
         </div>
 
@@ -161,8 +161,6 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               className="w-full px-3.5 py-2.5 bg-white text-slate-900 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400"
             >
               <option value="Membaca">Membaca Buku</option>
-              <option value="Meminjam Buku">Meminjam Buku</option>
-              <option value="Mengembalikan Buku">Mengembalikan Buku</option>
               <option value="Diskusi/Belajar">Diskusi / Belajar Kelompok</option>
               <option value="Lainnya">Lainnya</option>
             </select>
@@ -178,6 +176,12 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
             </button>
           </div>
         </form>
+
+        {/* Info: borrow/return auto-logged */}
+        <div className="mt-1 p-3 bg-blue-50/80 border border-blue-100 rounded-xl text-[10px] text-blue-700 font-semibold flex items-center gap-2">
+          <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-blue-500" />
+          <span>Kunjungan dengan tujuan <strong>Meminjam Buku</strong> &amp; <strong>Mengembalikan Buku</strong> dicatat <strong>otomatis</strong> oleh sistem Sirkulasi saat menggunakan fitur Scan Pinjam / Scan Kembali.</span>
+        </div>
       </div>
 
       {/* Filter Date & Visitor List */}

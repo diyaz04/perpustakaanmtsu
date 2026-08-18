@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Member, Loan, LibrarySettings } from '../../types';
 import { ImageUploader } from '../ImageUploader';
+import * as XLSX from 'xlsx';
 import {
   Users,
   UserPlus,
@@ -14,6 +15,10 @@ import {
   Phone,
   Mail,
   ShieldCheck,
+  Download,
+  Upload,
+  FileSpreadsheet,
+  X,
 } from 'lucide-react';
 
 interface MembersManagementViewProps {
@@ -24,6 +29,7 @@ interface MembersManagementViewProps {
   onUpdateMember: (member: Member) => void;
   onDeleteMember: (id: string) => void;
   onOpenMemberCard: (member: Member) => void;
+  onImportMembers?: (membersList: Omit<Member, 'id' | 'registered_at'>[]) => Promise<void>;
 }
 
 export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
@@ -34,10 +40,119 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
   onUpdateMember,
   onDeleteMember,
   onOpenMemberCard,
+  onImportMembers,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'siswa' | 'guru'>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+
+  const handleExportExcel = () => {
+    const dataToExport = members.map((m) => ({
+      'No. Anggota': m.member_number,
+      'Nama Lengkap': m.name,
+      'Tipe': m.role === 'siswa' ? 'Siswa' : 'Guru',
+      'Kelas/Jabatan': m.class_or_position,
+      'Jenis Kelamin': m.gender,
+      'Kontak/Telepon': m.phone || '',
+      'Email': m.email || '',
+      'Tanggal Registrasi': m.registered_at,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Daftar Anggota');
+    XLSX.writeFile(workbook, `Data_Anggota_Perpustakaan_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      {
+        'No. Anggota': '20260001',
+        'Nama Lengkap': 'Ahmad Fauzi',
+        'Tipe': 'Siswa',
+        'Kelas/Jabatan': 'Kelas 7A',
+        'Jenis Kelamin': 'L',
+        'Kontak/Telepon': '081234567890',
+        'Email': 'ahmad@school.sch.id',
+      },
+      {
+        'No. Anggota': '19850312201001',
+        'Nama Lengkap': 'Siti Rahmawati, S.Pd.',
+        'Tipe': 'Guru',
+        'Kelas/Jabatan': 'Wali Kelas 9B',
+        'Jenis Kelamin': 'P',
+        'Kontak/Telepon': '089876543210',
+        'Email': 'siti@school.sch.id',
+      },
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(templateData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Template Import');
+    XLSX.writeFile(workbook, 'Template_Import_Anggota.xlsx');
+  };
+
+  const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const workbook = XLSX.read(bstr, { type: 'binary' });
+        const worksheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[worksheetName];
+        const rawData = XLSX.utils.sheet_to_json(worksheet) as any[];
+
+        if (rawData.length === 0) {
+          alert('File Excel kosong atau tidak memiliki data.');
+          setIsImporting(false);
+          return;
+        }
+
+        const parsedMembers = rawData.map((row: any) => {
+          const mNumber = String(row['No. Anggota'] || row['Nomor'] || row['NIS'] || row['NIP'] || `MEM-${Math.floor(1000 + Math.random() * 9000)}`);
+          const mName = String(row['Nama Lengkap'] || row['Nama'] || 'Anggota Tanpa Nama');
+          const mTypeRaw = String(row['Tipe'] || row['Kategori'] || row['Peran'] || 'Siswa').toLowerCase();
+          const mRole: 'siswa' | 'guru' = mTypeRaw.includes('guru') || mTypeRaw.includes('staff') || mTypeRaw.includes('staff') ? 'guru' : 'siswa';
+          const mClass = String(row['Kelas/Jabatan'] || row['Kelas'] || row['Jabatan'] || 'Umum');
+          const mGenderRaw = String(row['Jenis Kelamin'] || row['Gender'] || 'L').toUpperCase();
+          const mGender: 'L' | 'P' = mGenderRaw.startsWith('P') ? 'P' : 'L';
+          const mPhone = String(row['Kontak/Telepon'] || row['Kontak'] || row['HP'] || '');
+          const mEmail = String(row['Email'] || '');
+
+          return {
+            member_number: mNumber,
+            name: mName,
+            role: mRole,
+            class_or_position: mClass,
+            gender: mGender,
+            photo_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300', // Default photo
+            phone: mPhone,
+            email: mEmail,
+          };
+        });
+
+        if (onImportMembers) {
+          await onImportMembers(parsedMembers);
+        } else {
+          for (const m of parsedMembers) {
+            await onAddMember(m);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Gagal mengimpor file Excel. Silakan periksa kesesuaian kolom.');
+      } finally {
+        setIsImporting(false);
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = ''; // Reset input
+  };
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [historyMember, setHistoryMember] = useState<Member | null>(null);
 
@@ -146,13 +261,49 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={openAddModal}
-          className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white font-semibold text-xs rounded-xl shadow-xs flex items-center gap-2 shrink-0"
-        >
-          <UserPlus className="w-4 h-4" />
-          <span>Tambah Anggota Baru</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {/* Download Template Button */}
+          <button
+            onClick={handleDownloadTemplate}
+            className="px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 hover:text-slate-900 font-bold text-xs rounded-xl transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-3xs"
+            title="Unduh Template Excel untuk Impor Anggota"
+          >
+            <Download className="w-3.5 h-3.5 text-slate-500" />
+            <span className="hidden sm:inline">Template Excel</span>
+          </button>
+
+          {/* Import Excel Button */}
+          <label className="px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 hover:text-slate-900 font-bold text-xs rounded-xl transition-colors inline-flex items-center gap-1.5 cursor-pointer relative shadow-3xs">
+            <Upload className="w-3.5 h-3.5 text-slate-500" />
+            <span>{isImporting ? 'Mengimpor...' : 'Impor Excel'}</span>
+            <input
+              type="file"
+              accept=".xlsx, .xls"
+              onChange={handleImportExcel}
+              disabled={isImporting}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+          </label>
+
+          {/* Export Excel Button */}
+          <button
+            onClick={handleExportExcel}
+            className="px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 hover:text-slate-900 font-bold text-xs rounded-xl transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-3xs"
+            title="Ekspor Seluruh Data Anggota ke Excel"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Ekspor Excel</span>
+          </button>
+
+          {/* Add Member Button */}
+          <button
+            onClick={openAddModal}
+            className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white font-semibold text-xs rounded-xl shadow-xs flex items-center gap-2 cursor-pointer shadow-3xs"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Tambah Anggota Baru</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter & Search */}
@@ -325,66 +476,71 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
           onClick={() => setHistoryMember(null)}
         >
           <div
-            className="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-lg w-full overflow-hidden"
+            className="bg-white rounded-3xl shadow-2xl border border-slate-200/80 max-w-lg w-full overflow-hidden text-left"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <History className="w-5 h-5 text-amber-400" />
-                <h3 className="font-bold text-base">Riwayat Pinjam: {historyMember.name}</h3>
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600 shadow-3xs">
+                  <History className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-sm sm:text-base leading-none">Riwayat Pinjam: {historyMember.name}</h3>
+                  <p className="text-[10px] sm:text-[11px] text-slate-455 text-slate-400 font-bold mt-1.5">Sirkulasi buku anggota</p>
+                </div>
               </div>
               <button
                 onClick={() => setHistoryMember(null)}
-                className="p-1 rounded-full hover:bg-white/20 text-slate-300"
+                className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
               >
-                <XCircle className="w-5 h-5" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-5 max-h-[70vh] overflow-y-auto space-y-3">
+            <div className="p-6 max-h-[60vh] overflow-y-auto space-y-3">
               {memberLoansHistory.length > 0 ? (
                 memberLoansHistory.map((l) => (
                   <div
                     key={l.id}
-                    className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1.5"
+                    className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-xs space-y-1.5 shadow-3xs text-left"
                   >
-                    <div className="font-bold text-slate-900 flex justify-between">
-                      <span>{l.book_title}</span>
+                    <div className="font-extrabold text-slate-900 flex justify-between gap-4">
+                      <span className="truncate">{l.book_title}</span>
                       <span
-                        className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${
+                        className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold shrink-0 ${
                           l.status === 'Terlambat'
-                            ? 'bg-rose-100 text-rose-800'
+                            ? 'bg-rose-100 text-rose-800 shadow-3xs'
                             : l.status === 'Dipinjam'
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-emerald-100 text-emerald-800'
+                            ? 'bg-amber-100 text-amber-800 shadow-3xs'
+                            : 'bg-emerald-100 text-emerald-800 shadow-3xs'
                         }`}
                       >
                         {l.status}
                       </span>
                     </div>
-                    <div className="flex justify-between text-[11px] text-slate-500">
+                    <div className="flex justify-between text-[10px] text-slate-500 font-semibold">
                       <span>Pinjam: {l.loan_date}</span>
                       <span>Jatuh Tempo: {l.due_date}</span>
                     </div>
                     {l.return_date && (
-                      <div className="text-[11px] text-emerald-700">Dikembalikan: {l.return_date}</div>
+                      <div className="text-[10px] text-emerald-700 font-extrabold">Dikembalikan: {l.return_date}</div>
                     )}
                     {l.fine_amount > 0 && (
-                      <div className="text-rose-700 font-bold">Denda: Rp {l.fine_amount.toLocaleString('id-ID')}</div>
+                      <div className="text-rose-700 font-extrabold">Denda: Rp {l.fine_amount.toLocaleString('id-ID')}</div>
                     )}
                   </div>
                 ))
               ) : (
-                <div className="py-8 text-center text-slate-400 text-xs">
+                <div className="py-8 text-center text-slate-400 text-xs font-semibold">
                   Anggota ini belum pernah melakukan peminjaman buku.
                 </div>
               )}
             </div>
 
-            <div className="bg-slate-50 px-5 py-3 border-t border-slate-100 flex justify-end">
+            <div className="p-6 border-t border-slate-100 flex justify-end shrink-0">
               <button
                 onClick={() => setHistoryMember(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 rounded-xl"
+                className="px-4 py-2.5 text-xs font-extrabold text-slate-500 hover:bg-slate-150 rounded-xl transition-all cursor-pointer"
               >
                 Tutup
               </button>
@@ -400,24 +556,34 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
           onClick={() => setIsModalOpen(false)}
         >
           <div
-            className="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-md w-full overflow-hidden"
+            className="bg-white rounded-3xl shadow-2xl border border-slate-200/80 max-w-md w-full overflow-hidden text-left"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-4 bg-gradient-to-r from-green-700 to-emerald-600 text-white flex items-center justify-between">
-              <h3 className="font-bold text-base">
-                {editingMember ? 'Edit Data Anggota' : 'Tambah Anggota Baru'}
-              </h3>
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 shadow-3xs">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-sm sm:text-base leading-none">
+                    {editingMember ? 'Edit Data Anggota' : 'Tambah Anggota Baru'}
+                  </h3>
+                  <p className="text-[10px] sm:text-[11px] text-slate-455 text-slate-400 font-bold mt-1.5 font-semibold">
+                    {editingMember ? 'Ubah informasi detail keanggotaan' : 'Daftarkan anggota perpustakaan baru'}
+                  </p>
+                </div>
+              </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded-full hover:bg-white/20 text-emerald-100"
+                className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
               >
-                <XCircle className="w-5 h-5" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-extrabold text-slate-700 mb-1">
                   Nama Lengkap *
                 </label>
                 <input
@@ -425,14 +591,14 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Contoh: Muhammad Rayhan"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-extrabold text-slate-700 mb-1">
                     Role Anggota *
                   </label>
                   <select
@@ -443,7 +609,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
                       if (r === 'guru') setClassOrPosition('Guru Fiqih');
                       else setClassOrPosition('Kelas 7A');
                     }}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs cursor-pointer"
                   >
                     <option value="siswa">Siswa</option>
                     <option value="guru">Guru / Staf</option>
@@ -451,7 +617,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-extrabold text-slate-700 mb-1">
                     {role === 'guru' ? 'NIP' : 'NIS (Nomor Induk)'} *
                   </label>
                   <input
@@ -459,7 +625,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
                     value={memberNumber}
                     onChange={(e) => setMemberNumber(e.target.value)}
                     placeholder="20237001"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-mono font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs"
                     required
                   />
                 </div>
@@ -467,7 +633,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-extrabold text-slate-700 mb-1">
                     {role === 'guru' ? 'Mata Pelajaran / Jabatan' : 'Kelas'} *
                   </label>
                   <input
@@ -475,17 +641,17 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
                     value={classOrPosition}
                     onChange={(e) => setClassOrPosition(e.target.value)}
                     placeholder={role === 'guru' ? 'Guru Bahasa Arab' : 'Kelas 7A'}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Jenis Kelamin</label>
+                  <label className="block text-xs font-extrabold text-slate-700 mb-1">Jenis Kelamin</label>
                   <select
                     value={gender}
                     onChange={(e) => setGender(e.target.value as 'L' | 'P')}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs cursor-pointer"
                   >
                     <option value="L">Laki-laki (L)</option>
                     <option value="P">Perempuan (P)</option>
@@ -506,39 +672,39 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">No. HP / WA</label>
+                  <label className="block text-xs font-extrabold text-slate-700 mb-1">No. HP / WA</label>
                   <input
                     type="text"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="08123456789"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Email</label>
+                  <label className="block text-xs font-extrabold text-slate-700 mb-1">Email</label>
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="email@domain.com"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs"
                   />
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+              <div className="pt-4 border-t border-slate-100 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+                  className="px-4 py-2.5 text-xs font-extrabold text-slate-500 hover:bg-slate-150 rounded-xl transition-all cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-gradient-to-r from-green-600 to-emerald-500 text-white text-xs font-semibold rounded-xl shadow-xs"
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-xl shadow-md shadow-emerald-600/10 hover:shadow-lg transition-all cursor-pointer"
                 >
                   Simpan Anggota
                 </button>

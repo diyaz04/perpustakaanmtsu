@@ -29,26 +29,32 @@ export const BookBarcodeModal: React.FC<BookBarcodeModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-md w-full overflow-hidden"
+        className="bg-white rounded-3xl shadow-2xl border border-slate-200/80 max-w-md w-full overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <BarcodeIcon className="w-5 h-5 text-emerald-400" />
-            <h3 className="font-semibold text-base">Label & Barcode Buku</h3>
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between shrink-0 text-left">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 shadow-3xs">
+              <BarcodeIcon className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-slate-900 text-sm sm:text-base leading-none">Label & Barcode Buku</h3>
+              <p className="text-[10px] sm:text-[11px] text-slate-455 text-slate-400 font-bold mt-1.5">Kartu sirkulasi buku perpustakaan</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium flex items-center gap-1 transition-colors"
+              className="p-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5 transition-colors cursor-pointer shadow-md shadow-emerald-600/10 shrink-0"
             >
-              <Printer className="w-4 h-4" />
-              <span>Cetak Label</span>
+              <Printer className="w-3.5 h-3.5" />
+              <span>Cetak</span>
             </button>
             <button
               onClick={onClose}
-              className="p-1 rounded-full hover:bg-white/20 text-slate-300 transition-colors"
+              className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer shrink-0"
+              title="Tutup"
             >
               <X className="w-5 h-5" />
             </button>

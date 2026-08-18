@@ -1,30 +1,27 @@
 import React, { useState } from 'react';
 import { LibrarySettings } from '../../types';
 import { ImageUploader } from '../ImageUploader';
-import { Cloud, Upload } from 'lucide-react';
 import {
   Settings as SettingsIcon,
   Save,
   RotateCcw,
-  Database,
   Coins,
-  Clock,
   CheckCircle2,
-  AlertCircle,
   Building2,
-  UserCheck,
 } from 'lucide-react';
 
 interface SettingsViewProps {
   settings: LibrarySettings;
   onSaveSettings: (newSettings: LibrarySettings) => void;
   onResetData: () => void;
+  onSyncToSupabase?: () => Promise<void>;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
   settings,
   onSaveSettings,
   onResetData,
+  onSyncToSupabase,
 }) => {
   const [formData, setFormData] = useState<LibrarySettings>(settings);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -199,106 +196,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
           </div>
         </div>
-
-        {/* Cloudinary Integration Options */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4">
-          <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2 pb-2 border-b border-slate-100">
-            <Cloud className="w-4 h-4 text-emerald-600" />
-            Integrasi Penyimpanan Gambar Cloudinary (Opsional)
-          </h3>
-
-          <p className="text-xs text-slate-600 leading-relaxed">
-            Jika diisi, semua foto profil anggota dan sampul buku akan diupload langsung ke <strong>Cloudinary</strong>, dan URL gambar otomatis disimpan di sistem/Supabase. Jika dikosongkan, gambar tetap otomatis dikompres super ringan (&lt;50 KB) &amp; disimpan secara aman.
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">
-                Cloudinary Cloud Name
-              </label>
-              <input
-                type="text"
-                value={formData.cloudinary_cloud_name || ''}
-                onChange={(e) => setFormData({ ...formData, cloudinary_cloud_name: e.target.value })}
-                placeholder="Contoh: dxy123abc"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">
-                Unsigned Upload Preset Name
-              </label>
-              <input
-                type="text"
-                value={formData.cloudinary_upload_preset || ''}
-                onChange={(e) => setFormData({ ...formData, cloudinary_upload_preset: e.target.value })}
-                placeholder="Contoh: perpustakaan_preset"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Database & Supabase Options */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4">
-          <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2 pb-2 border-b border-slate-100">
-            <Database className="w-4 h-4 text-emerald-600" />
-            Konfigurasi Database Supabase & Data Pemulihan
-          </h3>
-
-          <div className="space-y-3 text-xs">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">
-                Supabase Project URL (Opsional)
-              </label>
-              <input
-                type="text"
-                value={formData.supabase_url || ''}
-                onChange={(e) => setFormData({ ...formData, supabase_url: e.target.value })}
-                placeholder="https://xyzcompany.supabase.co"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">
-                Supabase Anon Key (Opsional)
-              </label>
-              <input
-                type="password"
-                value={formData.supabase_anon_key || ''}
-                onChange={(e) => setFormData({ ...formData, supabase_anon_key: e.target.value })}
-                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-
-            <div className="pt-2 flex justify-between items-center border-t border-slate-100">
-              <div className="text-[11px] text-slate-500">
-                Aplikasi ini mendukung penyimpanan offline terintegrasi & sync Supabase.
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirm('Atur ulang seluruh data aplikasi ke sampel default MTs KH A Wahab Muhsin?')) {
-                    onResetData();
-                  }
-                }}
-                className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl font-semibold flex items-center gap-1.5 transition-colors"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Reset Data Ke Sampel Default</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Submit */}
-        <div className="flex justify-end">
+        {/* Submit & Reset Actions */}
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-slate-100">
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm('Atur ulang seluruh data aplikasi ke sampel default MTs KH A Wahab Muhsin?')) {
+                onResetData();
+              }
+            }}
+            className="w-full sm:w-auto px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl font-extrabold flex items-center justify-center gap-1.5 transition-colors cursor-pointer text-xs"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Reset Data Ke Sampel Default</span>
+          </button>
+          
           <button
             type="submit"
-            className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2"
+            className="w-full sm:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md shadow-emerald-600/10 hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <Save className="w-4 h-4" />
             <span>Simpan Semua Pengaturan</span>
