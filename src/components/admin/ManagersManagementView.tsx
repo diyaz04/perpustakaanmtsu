@@ -36,6 +36,7 @@ export const ManagersManagementView: React.FC<ManagersManagementViewProps> = ({
   // Form states
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [position, setPosition] = useState('');
   const [accessBooks, setAccessBooks] = useState(true);
   const [accessMembers, setAccessMembers] = useState(true);
@@ -61,6 +62,7 @@ export const ManagersManagementView: React.FC<ManagersManagementViewProps> = ({
     setEditingManager(null);
     setName('');
     setEmail('');
+    setPassword('');
     setPosition('Staf Perpustakaan');
     setAccessBooks(true);
     setAccessMembers(true);
@@ -76,6 +78,7 @@ export const ManagersManagementView: React.FC<ManagersManagementViewProps> = ({
     setEditingManager(m);
     setName(m.name);
     setEmail(m.email);
+    setPassword(m.password || '');
     setPosition(m.position);
     setAccessBooks(m.access_books);
     setAccessMembers(m.access_members);
@@ -95,6 +98,7 @@ export const ManagersManagementView: React.FC<ManagersManagementViewProps> = ({
       id: editingManager ? editingManager.id : `mng-${Date.now()}`,
       name,
       email,
+      password: password || 'admin123',
       position,
       access_books: accessBooks,
       access_members: accessMembers,
@@ -394,6 +398,20 @@ export const ManagersManagementView: React.FC<ManagersManagementViewProps> = ({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="email@wahabmuhsin.sch.id"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 mb-1">
+                  Password Login *
+                </label>
+                <input
+                  type="text"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Masukkan password untuk login"
                   className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs"
                   required
                 />

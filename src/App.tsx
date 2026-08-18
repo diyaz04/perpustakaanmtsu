@@ -737,6 +737,7 @@ export default function App() {
         <LoginModal
           isOpen={isLoginModalOpen}
           onClose={() => setIsLoginModalOpen(false)}
+          managers={managers}
           onLoginSuccess={(email) => {
             setIsAdminAuthenticated(true);
             localStorage.setItem('mts_library_admin_authenticated', 'true');
@@ -1099,6 +1100,7 @@ export default function App() {
       <LoginModal
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}
+        managers={managers}
         onLoginSuccess={(email) => {
           setIsAdminAuthenticated(true);
           localStorage.setItem('mts_library_admin_authenticated', 'true');

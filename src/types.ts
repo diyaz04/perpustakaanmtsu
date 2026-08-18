@@ -90,6 +90,7 @@ export interface Manager {
   id: string;
   name: string;
   email: string;
+  password: string;
   position: string;
   access_books: boolean;
   access_members: boolean;

@@ -4,18 +4,21 @@ import {
   Globe, ChevronDown, Eye, EyeOff, Facebook, Instagram, 
   Youtube, BookOpen, Clock, Shield 
 } from 'lucide-react';
+import { Manager } from '../../types';
 import libraryLandingHero from '../../../assets/library_landing_hero.jpg';
 
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLoginSuccess: (email: string) => void;
+  managers: Manager[];
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({
   isOpen,
   onClose,
   onLoginSuccess,
+  managers,
 }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,14 +35,31 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     setError(null);
 
     setTimeout(() => {
-      if (email && password) {
-        onLoginSuccess(email);
-        setLoading(false);
-        onClose();
-      } else {
+      if (!email || !password) {
         setError('Email dan password harus diisi!');
         setLoading(false);
+        return;
       }
+
+      const manager = managers.find(
+        (m) => m.email.toLowerCase() === email.toLowerCase()
+      );
+
+      if (!manager) {
+        setError('Email tidak terdaftar sebagai pengelola. Hubungi administrator.');
+        setLoading(false);
+        return;
+      }
+
+      if (manager.password !== password) {
+        setError('Password salah. Silakan coba lagi.');
+        setLoading(false);
+        return;
+      }
+
+      onLoginSuccess(email);
+      setLoading(false);
+      onClose();
     }, 400);
   };
 

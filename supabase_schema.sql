@@ -97,6 +97,7 @@ CREATE TABLE IF NOT EXISTS managers (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   email TEXT NOT NULL,
+  password TEXT NOT NULL DEFAULT 'admin123',
   position TEXT NOT NULL,
   access_books BOOLEAN NOT NULL DEFAULT FALSE,
   access_members BOOLEAN NOT NULL DEFAULT FALSE,
