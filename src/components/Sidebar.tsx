@@ -16,6 +16,7 @@ import {
   LogOut,
   Library,
   ShieldCheck,
+  Home,
 } from 'lucide-react';
 
 export type AdminTab =
@@ -43,6 +44,7 @@ interface SidebarProps {
   };
   settings: LibrarySettings;
   onLogout?: () => void;
+  onBackToLanding?: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   currentManager?: Manager | null;
@@ -54,6 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   counts,
   settings,
   onLogout,
+  onBackToLanding,
   isCollapsed = false,
   onToggleCollapse,
 }) => {
@@ -243,17 +246,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        {onLogout && (
-          <button
-            onClick={onLogout}
-            title={isCollapsed ? "Keluar Portal" : undefined}
-            className={`w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-800 border border-rose-100 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-              isCollapsed ? 'px-0' : ''
-            }`}
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            {!isCollapsed && <span>Keluar Portal</span>}
-          </button>
+        {(onBackToLanding || onLogout) && (
+          <div className="flex flex-col gap-2 w-full mt-2">
+            {onBackToLanding && (
+              <button
+                onClick={onBackToLanding}
+                title={isCollapsed ? "Ke Beranda" : undefined}
+                className={`w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-800 border border-emerald-100 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  isCollapsed ? 'px-0' : ''
+                }`}
+              >
+                <Home className="w-3.5 h-3.5" />
+                {!isCollapsed && <span>Ke Beranda</span>}
+              </button>
+            )}
+            
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                title={isCollapsed ? "Keluar Portal" : undefined}
+                className={`w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-800 border border-rose-100 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  isCollapsed ? 'px-0' : ''
+                }`}
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                {!isCollapsed && <span>Keluar Portal</span>}
+              </button>
+            )}
+          </div>
         )}
       </div>
     </aside>

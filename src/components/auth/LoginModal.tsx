@@ -51,7 +51,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         return;
       }
 
-      if (manager.password !== password) {
+      // If manager has no password set (old record), accept default 'admin123'
+      const managerPassword = manager.password || 'admin123';
+      if (managerPassword !== password) {
         setError('Password salah. Silakan coba lagi.');
         setLoading(false);
         return;

@@ -796,6 +796,7 @@ export default function App() {
           counts={counts}
           settings={settings}
           onLogout={handleLogoutAdmin}
+          onBackToLanding={() => setActiveMode('public')}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         />
@@ -825,6 +826,10 @@ export default function App() {
               settings={settings}
               onLogout={() => {
                 handleLogoutAdmin();
+                setIsMobileSidebarOpen(false);
+              }}
+              onBackToLanding={() => {
+                setActiveMode('public');
                 setIsMobileSidebarOpen(false);
               }}
             />
