@@ -4,6 +4,7 @@ import {
   Globe, ChevronDown, Eye, EyeOff, Facebook, Instagram, 
   Youtube, BookOpen, Clock, Shield 
 } from 'lucide-react';
+import libraryLandingHero from '../../../assets/library_landing_hero.jpg';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -102,7 +103,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           {/* Landing Page Image Mockup integrated here */}
           <div className="relative w-full max-w-md aspect-[16/10] overflow-hidden rounded-2xl shadow-lg border border-slate-250 border-slate-200">
             <img
-              src="/assets/library_landing_hero.jpg"
+              src={libraryLandingHero}
               alt="Library Mockup"
               className="w-full h-full object-cover"
             />

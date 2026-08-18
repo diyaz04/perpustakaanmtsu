@@ -22,6 +22,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
+import libraryLandingHero from '../../../assets/library_landing_hero.jpg';
 
 interface PublicCatalogProps {
   books: Book[];
@@ -225,7 +226,7 @@ export const PublicCatalog: React.FC<PublicCatalogProps> = ({
           {/* Main Illustration mockup */}
           <div className="relative w-full max-w-md aspect-[16/9] lg:aspect-square overflow-hidden rounded-2xl shadow-lg border border-slate-200/80">
             <img
-              src="/assets/library_landing_hero.jpg"
+              src={libraryLandingHero}
               alt="Mockup Aplikasi Perpustakaan Digital"
               className="w-full h-full object-cover"
             />
@@ -294,7 +295,7 @@ export const PublicCatalog: React.FC<PublicCatalogProps> = ({
         <div className="w-full flex justify-center">
           <div className="w-full max-w-[280px] aspect-[4/3] rounded-xl overflow-hidden shadow-md border border-slate-200 bg-white">
             <img
-              src="/assets/library_landing_hero.jpg"
+              src={libraryLandingHero}
               alt="Mockup Digital"
               className="w-full h-full object-cover"
             />
