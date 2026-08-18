@@ -83,6 +83,7 @@ export default function App() {
 
   // Toast feedback
   const [toastMsg, setToastMsg] = useState<{ title: string; desc: string; type: 'success' | 'info' } | null>(null);
+  const [dbError, setDbError] = useState<string | null>(null);
 
   const showToast = (title: string, desc: string, type: 'success' | 'info' = 'success') => {
     setToastMsg({ title, desc, type });
@@ -112,23 +113,38 @@ export default function App() {
     }
   }, [appData.settings.library_name, appData.settings.logo_url]);
 
-  // Load data from Supabase on mount (with fallback to localStorage)
+  // Load data from Supabase on mount
   useEffect(() => {
     async function loadData() {
       const client = getSupabase();
       if (!client) {
-        setAppData((prev) => updateFinesAndStatus(prev));
+        setDbError('NOT_CONNECTED');
         return;
       }
 
       try {
         const data = await fetchSupabaseData();
         if (data) {
+          // Handle diagnostic errors with specific messages
+          if (data.diagnosticError) {
+            setDbError(data.diagnosticError);
+            return;
+          }
+
           const isSupabaseEmpty = data.books.length === 0 && data.members.length === 0 && data.loans.length === 0;
           if (isSupabaseEmpty) {
-            console.log('Supabase is connected but empty. Seeding local storage data to Supabase...');
-            await syncAllLocalDataToSupabase(appData);
-            showToast('Koneksi Database', 'Data lokal berhasil diunggah ke database online.');
+            console.log('Supabase is connected and tables are empty. Ready to use.');
+            // Seed settings only so the app has basic config
+            try {
+              await syncSettings(appData.settings);
+              // Also seed managers if we have them locally
+              if (appData.managers && appData.managers.length > 0) {
+                await syncAllLocalDataToSupabase({ ...appData, books: [], members: [], loans: [], visits: [], reservations: [] });
+              }
+            } catch (seedErr) {
+              console.warn('Non-critical: failed to seed initial settings/managers:', seedErr);
+            }
+            showToast('Database Online', 'Supabase terhubung. Database siap digunakan.');
           } else {
             const finalSettings = data.settings || appData.settings;
             setAppData(updateFinesAndStatus({
@@ -142,11 +158,12 @@ export default function App() {
             }));
             showToast('Database Online', 'Berhasil terhubung & sinkron dengan Supabase.');
           }
+          setDbError(null);
         }
       } catch (err: any) {
-        console.error('Failed to load data from Supabase:', err);
-        showToast('Database Gagal', 'Gagal memuat data online. Menggunakan mode Offline.', 'info');
-        setAppData((prev) => updateFinesAndStatus(prev));
+        const errDetail = err?.message || err?.code || JSON.stringify(err);
+        console.error('Failed to load data from Supabase:', errDetail);
+        setDbError(`FETCH_FAILED: ${errDetail}`);
       }
     }
 
@@ -574,7 +591,62 @@ export default function App() {
     showToast('Petugas Keluar', 'Anda telah keluar dari portal admin.', 'info');
   };
 
-  if (!isSupabaseConnected) {
+  if (!isSupabaseConnected || dbError) {
+    const errorConfig: Record<string, { title: string; desc: string; steps: string[] }> = {
+      'NOT_CONNECTED': {
+        title: 'Database Tidak Terhubung',
+        desc: 'Koneksi ke database Cloud Supabase belum dikonfigurasi. Mode lokal dinonaktifkan untuk production.',
+        steps: [
+          'Buka file .env di root folder proyek, atau Environment Variables di Vercel.',
+          'Masukkan VITE_SUPABASE_URL (contoh: https://xxxxx.supabase.co)',
+          'Masukkan VITE_SUPABASE_ANON_KEY (contoh: eyJhbG...)',
+          'Jika di Vercel, lakukan Redeploy setelah menambahkan variabel.',
+        ],
+      },
+      'TABLES_NOT_CREATED': {
+        title: 'Tabel Database Belum Dibuat',
+        desc: 'Koneksi ke Supabase berhasil, tetapi tabel-tabel yang dibutuhkan belum ada di database.',
+        steps: [
+          'Buka Supabase Dashboard → SQL Editor.',
+          'Copy seluruh isi file supabase_schema.sql dari proyek Anda.',
+          'Paste dan klik Run di SQL Editor.',
+          'Refresh halaman ini setelah tabel berhasil dibuat.',
+        ],
+      },
+      'RLS_BLOCKING': {
+        title: 'Akses Database Diblokir (RLS)',
+        desc: 'Row Level Security (RLS) di Supabase memblokir akses dari aplikasi. Anon key tidak memiliki izin.',
+        steps: [
+          'Buka Supabase Dashboard → SQL Editor.',
+          'Jalankan perintah: ALTER TABLE books DISABLE ROW LEVEL SECURITY;',
+          'Ulangi untuk semua tabel: members, loans, visits, reservations, settings, managers.',
+          'Atau jalankan ulang file supabase_schema.sql yang sudah termasuk perintah disable RLS.',
+        ],
+      },
+      'INVALID_KEY': {
+        title: 'API Key Supabase Tidak Valid',
+        desc: 'Anon Key yang digunakan salah atau tidak cocok dengan URL project Supabase Anda.',
+        steps: [
+          'Buka Supabase Dashboard → Project Settings → API.',
+          'Salin Project URL dan anon (public) key yang benar.',
+          'Perbarui VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY di Environment Variables.',
+          'Jika di Vercel, lakukan Redeploy setelah mengubah variabel.',
+        ],
+      },
+    };
+
+    const errKey = dbError?.startsWith('FETCH_FAILED') ? 'FETCH_FAILED' : (dbError || 'NOT_CONNECTED');
+    const config = errorConfig[errKey] || {
+      title: 'Gagal Memuat Database',
+      desc: dbError?.replace('FETCH_FAILED: ', '') || 'Terjadi kesalahan saat menghubungi Supabase. Pastikan URL dan Key sudah benar, serta tabel sudah dibuat dan RLS sudah dinonaktifkan.',
+      steps: [
+        'Pastikan VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY sudah benar.',
+        'Pastikan tabel sudah dibuat dengan menjalankan supabase_schema.sql di SQL Editor.',
+        'Pastikan RLS sudah dinonaktifkan untuk semua tabel.',
+        'Jika di Vercel, pastikan sudah Redeploy setelah mengubah Environment Variables.',
+      ],
+    };
+
     return (
       <div className="min-h-screen bg-slate-900 text-slate-100 font-sans flex flex-col items-center justify-center p-6 text-center select-none">
         <div className="max-w-md bg-slate-800 border border-slate-700 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col items-center gap-6 animate-in fade-in duration-300">
@@ -583,20 +655,36 @@ export default function App() {
           </div>
           
           <div className="space-y-2">
-            <h2 className="text-xl font-black text-white tracking-tight leading-tight">Database Tidak Terhubung</h2>
+            <h2 className="text-xl font-black text-white tracking-tight leading-tight">{config.title}</h2>
             <p className="text-xs text-slate-400 font-semibold leading-relaxed">
-              Koneksi ke database Cloud Supabase belum dikonfigurasi. Karena aplikasi ini disiapkan untuk production, mode lokal dinonaktifkan dan koneksi database aktif wajib digunakan agar aplikasi dapat dijalankan.
+              {config.desc}
             </p>
           </div>
 
-          <div className="w-full bg-slate-850 border border-slate-750 rounded-2xl p-4 text-left text-[11px] text-slate-400 space-y-2 font-medium leading-relaxed">
-            <p className="font-bold text-slate-200">Cara Mengaktifkan:</p>
+          <div className="w-full bg-slate-900/50 border border-slate-700/50 rounded-2xl p-4 text-left text-[11px] text-slate-400 space-y-2 font-medium leading-relaxed">
+            <p className="font-bold text-slate-200">Cara Memperbaiki:</p>
             <ol className="list-decimal pl-4 space-y-1">
-              <li>Buka file <code className="bg-slate-800 px-1 py-0.5 rounded border border-slate-700 text-amber-400 font-mono text-[10px]">.env</code> di root folder proyek Anda.</li>
-              <li>Masukkan <code className="font-mono text-[10px]">VITE_SUPABASE_URL</code> dan <code className="font-mono text-[10px]">VITE_SUPABASE_ANON_KEY</code>.</li>
-              <li>Jika dideploy ke Vercel, tambahkan kedua variable tersebut di pengaturan Environment Variables Vercel lalu lakukan <strong>Redeploy</strong>.</li>
+              {config.steps.map((step, i) => (
+                <li key={i}>{step}</li>
+              ))}
             </ol>
           </div>
+
+          {dbError && dbError.startsWith('FETCH_FAILED') && (
+            <div className="w-full bg-rose-950/30 border border-rose-900/30 rounded-2xl p-3 text-left">
+              <p className="text-[10px] font-bold text-rose-400 mb-1">Detail Error:</p>
+              <p className="text-[9px] text-rose-300/70 font-mono break-all leading-relaxed">
+                {dbError.replace('FETCH_FAILED: ', '')}
+              </p>
+            </div>
+          )}
+
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-3 rounded-xl transition-colors cursor-pointer"
+          >
+            Coba Lagi (Refresh)
+          </button>
 
           <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
             Perpustakaan Digital MTs KH A Wahab Muhsin

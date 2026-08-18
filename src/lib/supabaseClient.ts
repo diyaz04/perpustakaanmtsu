@@ -51,11 +51,56 @@ export function getSupabase(): SupabaseClient | null {
   return supabaseInstance;
 }
 
-export async function fetchSupabaseData() {
+export async function fetchSupabaseData(): Promise<{
+  books: any[];
+  members: any[];
+  loans: any[];
+  visits: any[];
+  reservations: any[];
+  settings: any;
+  managers: any[];
+  diagnosticError?: string;
+} | null> {
   const client = getSupabase();
   if (!client) return null;
 
   try {
+    // First, test connection with a simple query to detect common issues
+    const { data: testData, error: testError } = await client.from('books').select('id').limit(1);
+    
+    if (testError) {
+      const errMsg = testError.message || '';
+      const errCode = testError.code || '';
+      
+      // Table doesn't exist
+      if (errMsg.includes('does not exist') || errMsg.includes('relation') || errCode === '42P01') {
+        return {
+          books: [], members: [], loans: [], visits: [], reservations: [], settings: null, managers: [],
+          diagnosticError: 'TABLES_NOT_CREATED'
+        };
+      }
+      
+      // RLS blocking or permission denied
+      if (errCode === '42501' || errMsg.includes('permission denied') || errMsg.includes('row-level security')) {
+        return {
+          books: [], members: [], loans: [], visits: [], reservations: [], settings: null, managers: [],
+          diagnosticError: 'RLS_BLOCKING'
+        };
+      }
+
+      // JWT or auth errors
+      if (errMsg.includes('JWT') || errMsg.includes('apikey') || errMsg.includes('Invalid API key') || errCode === 'PGRST301') {
+        return {
+          books: [], members: [], loans: [], visits: [], reservations: [], settings: null, managers: [],
+          diagnosticError: 'INVALID_KEY'
+        };
+      }
+
+      // Generic error — throw with full message
+      throw new Error(`Supabase query error: ${errMsg} (code: ${errCode})`);
+    }
+
+    // If test passed, fetch all data
     const [
       { data: books, error: errBooks },
       { data: members, error: errMembers },
