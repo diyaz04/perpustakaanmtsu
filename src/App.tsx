@@ -60,14 +60,20 @@ import { CheckCircle2, AlertCircle, Bell, Calendar, Menu, X, BookOpen, Users, Re
 
 export default function App() {
   const [appData, setAppData] = useState(() => loadStorageData());
-  const [activeMode, setActiveMode] = useState<'public' | 'admin'>('public');
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
+    return localStorage.getItem('mts_library_admin_authenticated') === 'true';
+  });
+  const [activeMode, setActiveMode] = useState<'public' | 'admin'>(() => {
+    const isAuth = localStorage.getItem('mts_library_admin_authenticated') === 'true';
+    return isAuth ? 'admin' : 'public';
+  });
   const [adminTab, setAdminTab] = useState<AdminTab>('menu');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-
-  // Auth State (Default false for production access)
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [currentManagerEmail, setCurrentManagerEmail] = useState(() => {
+    return localStorage.getItem('mts_library_current_manager_email') || '';
+  });
 
   // Modals
   const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -559,6 +565,9 @@ export default function App() {
 
   const handleLogoutAdmin = () => {
     setIsAdminAuthenticated(false);
+    localStorage.removeItem('mts_library_admin_authenticated');
+    setCurrentManagerEmail('');
+    localStorage.removeItem('mts_library_current_manager_email');
     setActiveMode('public');
     showToast('Petugas Keluar', 'Anda telah keluar dari portal admin.', 'info');
   };
@@ -608,6 +617,9 @@ export default function App() {
           onClose={() => setIsLoginModalOpen(false)}
           onLoginSuccess={(email) => {
             setIsAdminAuthenticated(true);
+            localStorage.setItem('mts_library_admin_authenticated', 'true');
+            setCurrentManagerEmail(email);
+            localStorage.setItem('mts_library_current_manager_email', email);
             setActiveMode('admin');
             showToast('Login Berhasil', `Selamat bertugas, ${email}`);
           }}
@@ -951,6 +963,9 @@ export default function App() {
         onClose={() => setIsLoginModalOpen(false)}
         onLoginSuccess={(email) => {
           setIsAdminAuthenticated(true);
+          localStorage.setItem('mts_library_admin_authenticated', 'true');
+          setCurrentManagerEmail(email);
+          localStorage.setItem('mts_library_current_manager_email', email);
           setActiveMode('admin');
           setAdminTab('menu');
           showToast('Login Berhasil', `Selamat bertugas, ${email}`);
