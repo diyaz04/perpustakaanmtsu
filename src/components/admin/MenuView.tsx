@@ -221,7 +221,7 @@ export const MenuView: React.FC<MenuViewProps> = ({
         const timeConfig = getTimeConfig();
         const isDark = timeConfig.greeting === 'Selamat Malam';
         return (
-          <div className={`relative overflow-hidden rounded-3xl bg-gradient-to-r ${timeConfig.gradient} border p-5 sm:p-8 flex justify-between items-center gap-4 shadow-2xs transition-all duration-500`}>
+          <div className={`relative overflow-hidden rounded-3xl bg-gradient-to-r ${timeConfig.gradient} border p-5 sm:p-8 flex justify-between items-center gap-4 shadow-2xs transition-all duration-500 select-none`}>
             {/* Banner text info */}
             <div className={`space-y-3.5 max-w-lg text-left z-10 pr-24 xs:pr-32 sm:pr-48 md:pr-56 ${timeConfig.textColor}`}>
               <div className="space-y-1">
@@ -309,7 +309,7 @@ export const MenuView: React.FC<MenuViewProps> = ({
               {/* Accordion Header */}
               <button
                 onClick={() => toggleSection(section.id)}
-                className="w-full flex items-center justify-between p-4 sm:p-5 text-left cursor-pointer hover:bg-slate-50 transition-colors"
+                className="w-full flex items-center justify-between p-4 sm:p-5 text-left cursor-pointer hover:bg-slate-50 transition-colors select-none"
               >
                 <div className="flex items-center gap-3.5">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${section.iconBg}`}>
@@ -341,7 +341,7 @@ export const MenuView: React.FC<MenuViewProps> = ({
                       <div
                         key={fIdx}
                         onClick={feature.action}
-                        className="bg-white p-4.5 rounded-2xl border border-slate-200/80 shadow-3xs hover:border-emerald-500/80 hover:shadow-xs transition-all duration-200 cursor-pointer flex justify-between items-center group"
+                        className="bg-white p-4.5 rounded-2xl border border-slate-200/80 shadow-3xs hover:border-emerald-500/80 hover:shadow-xs transition-all duration-200 cursor-pointer flex justify-between items-center group select-none"
                       >
                         <div className="space-y-1 pr-4 min-w-0">
                           <h5 className="text-[11px] sm:text-xs font-black text-slate-800 group-hover:text-emerald-700 transition-colors truncate">

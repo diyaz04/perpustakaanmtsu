@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Book,
   Member,
@@ -147,7 +147,19 @@ export default function App() {
     loadData();
   }, []);
 
-  const { books, members, loans, visits, reservations, settings, managers } = appData;
+  const { books, members, loans, visits, reservations, settings: rawSettings, managers } = appData;
+
+  const settings = useMemo(() => {
+    const headManager = managers.find(
+      (m) =>
+        m.position.toLowerCase().includes('kepala perpustakaan') ||
+        m.position.toLowerCase().includes('kepala perpus')
+    );
+    return {
+      ...rawSettings,
+      head_librarian: headManager ? headManager.name : rawSettings.head_librarian,
+    };
+  }, [rawSettings, managers]);
 
   // Counts for sidebar badges
   const counts = {

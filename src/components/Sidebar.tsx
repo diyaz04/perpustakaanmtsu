@@ -1,5 +1,5 @@
 import React from 'react';
-import { Book, Member, Loan, Visit, LibrarySettings } from '../types';
+import { Book, Member, Loan, Visit, LibrarySettings, Manager } from '../types';
 import {
   LayoutDashboard,
   LayoutGrid,
@@ -45,6 +45,7 @@ interface SidebarProps {
   onLogout?: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  currentManager?: Manager | null;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -139,7 +140,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         key={item.id}
         onClick={() => setActiveTab(item.id)}
         title={isCollapsed ? item.label : undefined}
-        className={`w-full text-slate-500 rounded-xl px-4 py-3 flex items-center justify-between text-xs font-semibold transition-all cursor-pointer ${
+        className={`w-full text-slate-500 rounded-xl px-4 py-3 flex items-center justify-between text-xs font-semibold transition-all cursor-pointer select-none ${
           isActive
             ? 'bg-emerald-50 text-emerald-700 font-bold shadow-xs'
             : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
