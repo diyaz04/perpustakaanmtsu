@@ -132,14 +132,17 @@ export default function App() {
           }
 
           const isSupabaseEmpty = data.books.length === 0 && data.members.length === 0 && data.loans.length === 0;
+          let currentManagers = data.managers || [];
+
           if (isSupabaseEmpty) {
             console.log('Supabase is connected and tables are empty. Ready to use.');
             // Seed settings only so the app has basic config
             try {
               await syncSettings(appData.settings);
-              // Also seed managers if we have them locally
-              if (appData.managers && appData.managers.length > 0) {
+              // Also seed managers ONLY IF Supabase has absolutely no managers
+              if (data.managers.length === 0 && appData.managers && appData.managers.length > 0) {
                 await syncAllLocalDataToSupabase({ ...appData, books: [], members: [], loans: [], visits: [], reservations: [] });
+                currentManagers = appData.managers; // Use the seeded ones for this session
               }
             } catch (seedErr) {
               console.warn('Non-critical: failed to seed initial settings/managers:', seedErr);
@@ -158,7 +161,7 @@ export default function App() {
             visits: data.visits,
             reservations: data.reservations,
             settings: finalSettings,
-            managers: data.managers && data.managers.length > 0 ? data.managers : appData.managers,
+            managers: currentManagers,
           }));
           
           setDbError(null);
