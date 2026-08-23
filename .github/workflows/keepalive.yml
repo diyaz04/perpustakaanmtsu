@@ -1,0 +1,28 @@
+name: Keep Supabase Alive
+
+on:
+  schedule:
+    # Berjalan otomatis setiap 2 hari pada jam 00:00 UTC
+    - cron: '0 0 */2 * *'
+  workflow_dispatch: # Memungkinkan kamu menjalankan script ini secara manual kapan saja dari tab "Actions"
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Database via REST API
+        run: |
+          echo "Memulai ping ke Supabase untuk mencegah Auto-Pause..."
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: ${{ secrets.VITE_SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.VITE_SUPABASE_ANON_KEY }}" \
+            "${{ secrets.VITE_SUPABASE_URL }}/rest/v1/settings?select=id&limit=1")
+          
+          echo "Status Code dari Supabase: $HTTP_STATUS"
+          
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            echo "Ping berhasil! Supabase tetap aktif."
+          else
+            echo "Ping gagal atau tidak mengembalikan status 200. Pastikan Github Secrets sudah diset dengan benar."
+            # Tetap exit 0 agar workflow tidak dianggap error
+          fi
