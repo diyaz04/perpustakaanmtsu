@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Member, LibrarySettings } from '../../types';
 import { X, Printer, CreditCard, AlertCircle } from 'lucide-react';
 import QRCode from 'qrcode';
@@ -15,6 +15,7 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
   onClose,
 }) => {
   const printFrameRef = useRef<HTMLIFrameElement>(null);
+  const [template, setTemplate] = useState<'siswa' | 'perpus'>('siswa');
 
   const handlePrint = async () => {
     // Generate all QR code data URLs
@@ -28,6 +29,9 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
       )
     );
 
+    const frontImgSrc = template === 'siswa' ? '/assets/card-front.png' : '/assets/card-front-perpus.png';
+    const backImgSrc = template === 'siswa' ? '/assets/card-back.png' : '/assets/card-back-perpus.png';
+
     const cardsHtml = selectedMembers
       .map((member, idx) => {
         const dateStr = new Date(member.registered_at).toLocaleDateString('id-ID', {
@@ -40,7 +44,7 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
 
         return `
           <div class="card card-front">
-            <img class="bg-img" src="/assets/card-front.png" alt="Front" />
+            <img class="bg-img" src="${frontImgSrc}" alt="Front" />
             <div class="card-content">
               <div class="photo-box">
                 <img src="${photoUrl}" alt="Photo" />
@@ -63,7 +67,7 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
     // Single Back Card
     const backCardHtml = `
       <div class="card card-back page-break-before">
-        <img class="bg-img" src="/assets/card-back.png" alt="Back" />
+        <img class="bg-img" src="${backImgSrc}" alt="Back" />
       </div>
     `;
 
@@ -81,28 +85,19 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
     print-color-adjust: exact;
   }
   
-  /* A4 size 210x297mm setup */
+  /* ISO ID-1 Size */
   @page {
-    size: A4 portrait;
-    margin: 10mm;
-  }
-
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(2, 53.98mm);
-    gap: 10mm;
-    justify-content: center;
+    size: 53.98mm 85.6mm portrait;
+    margin: 0;
   }
   
   .card {
     width: 53.98mm;
     height: 85.6mm;
     position: relative;
-    border-radius: 4px;
     overflow: hidden;
-    break-inside: avoid;
-    page-break-inside: avoid;
-    border: 1px dashed #ccc; /* Cut guide */
+    page-break-after: always;
+    break-after: page;
   }
 
   .bg-img {
@@ -133,12 +128,8 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
     margin: 0 auto;
   }
   
-  .photo-box img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
+  .photo-box img { width: 100%; height: 100%; object-fit: cover; }
+  
   .details {
     margin-top: 4mm;
     text-align: center;
@@ -146,38 +137,11 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
     padding: 0 2mm;
   }
   
-  .name {
-    font-size: 8pt;
-    font-weight: 900;
-    color: #266b44;
-    text-transform: uppercase;
-    line-height: 1.1;
-  }
+  .name { font-size: 8pt; font-weight: 900; color: #266b44; text-transform: uppercase; line-height: 1.1; }
+  .number { font-size: 6pt; font-weight: bold; color: #3a835a; margin-top: 1mm; letter-spacing: 0.5pt; }
+  .date { font-size: 4.5pt; font-weight: bold; color: #3a835a; margin-top: 1.5mm; text-transform: uppercase; }
+  .position { font-size: 4.5pt; font-weight: bold; color: #3a835a; margin-top: 0.5mm; text-transform: uppercase; }
   
-  .number {
-    font-size: 6pt;
-    font-weight: bold;
-    color: #3a835a;
-    margin-top: 1mm;
-    letter-spacing: 0.5pt;
-  }
-  
-  .date {
-    font-size: 4.5pt;
-    font-weight: bold;
-    color: #3a835a;
-    margin-top: 1.5mm;
-    text-transform: uppercase;
-  }
-
-  .position {
-    font-size: 4.5pt;
-    font-weight: bold;
-    color: #3a835a;
-    margin-top: 0.5mm;
-    text-transform: uppercase;
-  }
-
   .qr-box {
     position: absolute;
     bottom: 5mm;
@@ -189,27 +153,12 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
     box-shadow: 0 1px 2px rgba(0,0,0,0.1);
   }
   
-  .qr-box img {
-    width: 11mm;
-    height: 11mm;
-    display: block;
-  }
-
-  .page-break-before {
-    page-break-before: always;
-    break-before: page;
-  }
-
-  @media print {
-    .card { border: none; } /* Hide cut lines in print if preferred */
-  }
+  .qr-box img { width: 11mm; height: 11mm; display: block; }
 </style>
 </head>
 <body>
-  <div class="grid">
-    ${cardsHtml}
-    ${backCardHtml}
-  </div>
+  ${cardsHtml}
+  ${backCardHtml}
 </body>
 </html>`;
 
@@ -249,6 +198,18 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
 
         {/* Content */}
         <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-xs font-extrabold text-slate-700 mb-2">Pilih Template Kartu</label>
+            <select 
+              value={template} 
+              onChange={e => setTemplate(e.target.value as any)}
+              className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 shadow-2xs focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+            >
+              <option value="siswa">Template Siswa (Default)</option>
+              <option value="perpus">Template Kartu Tanda Perpustakaan</option>
+            </select>
+          </div>
+
           <div className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-100 rounded-2xl">
             <CreditCard className="w-5 h-5 text-emerald-600 shrink-0" />
             <div className="text-xs">
@@ -264,7 +225,7 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
           <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl text-[10px] text-blue-700 font-semibold flex items-start gap-2">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-blue-400" />
             <span>
-              Cetak massal akan diatur dalam bentuk Grid (2 kolom) yang cocok untuk ukuran kertas A4. 
+              Cetak massal akan di-generate dalam bentuk file PDF full satu halaman penuh per satu orang anggota (ukuran 53.98mm x 85.6mm).
               Sisi belakang kartu hanya akan di-generate 1 kali di halaman paling akhir.
             </span>
           </div>

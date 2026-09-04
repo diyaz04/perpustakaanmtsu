@@ -26,6 +26,7 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
   settings,
 }) => {
   const [activeSide, setActiveSide] = useState<'front' | 'back' | 'both'>('both');
+  const [template, setTemplate] = useState<'siswa' | 'perpus'>('siswa');
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
@@ -204,8 +205,16 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
           </button>
         </div>
 
-        {/* Side toggle */}
-        <div className="px-6 py-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between gap-3 shrink-0">
+        {/* Tool bar */}
+        <div className="px-6 py-3 bg-slate-50 border-b border-slate-100 flex flex-wrap items-center gap-3 shrink-0">
+          <select 
+            value={template} 
+            onChange={e => setTemplate(e.target.value as any)}
+            className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 shadow-2xs focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+          >
+            <option value="siswa">Template Siswa</option>
+            <option value="perpus">Template Perpustakaan</option>
+          </select>
           <div className="flex items-center bg-white border border-slate-200 p-1 rounded-xl gap-1 shadow-2xs">
             {(['both', 'front', 'back'] as const).map((s) => (
               <button
@@ -221,7 +230,7 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
               </button>
             ))}
           </div>
-          <span className="text-[10px] text-slate-400 font-bold hidden sm:block">85.6 × 53.98 mm • ISO ID-1</span>
+          <span className="text-[10px] text-slate-400 font-bold hidden sm:block ml-auto">85.6 × 53.98 mm • ISO ID-1</span>
         </div>
 
         {/* Card Canvas */}
@@ -238,7 +247,7 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
                   style={{ aspectRatio: '53.98/85.6' }}
                 >
                   {/* Background Image */}
-                  <img src="/assets/card-front.png" alt="Card Front Background" className="absolute inset-0 w-full h-full object-cover" crossOrigin="anonymous" />
+                  <img src={template === 'siswa' ? "/assets/card-front.png" : "/assets/card-front-perpus.png"} alt="Card Front Background" className="absolute inset-0 w-full h-full object-cover" crossOrigin="anonymous" />
                   
                   {/* Content layout */}
                   <div className="relative z-10 h-full flex flex-col items-center pt-[100px]">
@@ -291,7 +300,7 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
                 className="w-[224px] h-[356px] rounded-xl overflow-hidden relative shadow-2xl shrink-0 select-none bg-white"
                 style={{ aspectRatio: '53.98/85.6' }}
               >
-                <img src="/assets/card-back.png" alt="Card Back Background" className="w-full h-full object-cover" crossOrigin="anonymous" />
+                <img src={template === 'siswa' ? "/assets/card-back.png" : "/assets/card-back-perpus.png"} alt="Card Back Background" className="w-full h-full object-cover" crossOrigin="anonymous" />
               </div>
             </div>
           </div>
