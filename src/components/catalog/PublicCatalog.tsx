@@ -48,6 +48,7 @@ export const PublicCatalog: React.FC<PublicCatalogProps> = ({
   const [reserveBook, setReserveBook] = useState<Book | null>(null);
   const [selectedPdfBook, setSelectedPdfBook] = useState<Book | null>(null);
   const [activeCatalogTab, setActiveCatalogTab] = useState<'all' | 'new' | 'popular' | 'recommended'>('all');
+  const [displayLimit, setDisplayLimit] = useState<number>(10);
 
   // Student loan search state
   const [searchMemberNo, setSearchMemberNo] = useState('');
@@ -101,9 +102,13 @@ export const PublicCatalog: React.FC<PublicCatalogProps> = ({
           ? book.available_stock > 0
           : book.available_stock === 0;
 
-      return matchesSearch && matchesCategory && matchesAvailability;
+      const isLaptop = book.category === 'Laptop';
+      
+      return !isLaptop && matchesSearch && matchesCategory && matchesAvailability;
     });
   }, [books, searchTerm, selectedCategory, availabilityFilter]);
+
+  const laptopsOnly = useMemo(() => books.filter(b => b.category === 'Laptop'), [books]);
 
   const sortedAndFilteredBooks = useMemo(() => {
     let result = [...filteredBooks];
@@ -711,9 +716,10 @@ export const PublicCatalog: React.FC<PublicCatalogProps> = ({
 
       {/* Book Grid Area */}
       {sortedAndFilteredBooks.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
-          {sortedAndFilteredBooks.map((book) => {
-            const isAvailable = book.available_stock > 0;
+        <div className="space-y-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+            {sortedAndFilteredBooks.slice(0, displayLimit).map((book) => {
+              const isAvailable = book.available_stock > 0;
             return (
               <div
                 key={book.id}
@@ -789,6 +795,37 @@ export const PublicCatalog: React.FC<PublicCatalogProps> = ({
               </div>
             );
           })}
+          </div>
+
+          {/* Load More & Info Section */}
+          <div className="flex flex-col items-center justify-center pt-8 pb-4 space-y-4 border-t border-slate-200/50">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-bold text-slate-500">Tampilkan:</span>
+              <select
+                value={displayLimit}
+                onChange={(e) => setDisplayLimit(Number(e.target.value))}
+                className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-emerald-700 focus:outline-none cursor-pointer hover:bg-emerald-50 transition-colors"
+              >
+                <option value={10}>10 Buku</option>
+                <option value={20}>20 Buku</option>
+                <option value={30}>30 Buku</option>
+                <option value={50}>50 Buku</option>
+                <option value={100}>100 Buku</option>
+              </select>
+            </div>
+            
+            <div className="text-center bg-emerald-50/50 px-6 py-4 rounded-2xl border border-emerald-100 max-w-2xl w-full">
+              <p className="text-sm text-emerald-800 font-bold flex items-center justify-center gap-2">
+                <Sparkles className="w-5 h-5 text-emerald-600" />
+                Menampilkan {Math.min(displayLimit, sortedAndFilteredBooks.length)} dari total {sortedAndFilteredBooks.length} buku yang cocok.
+              </p>
+              {sortedAndFilteredBooks.length > displayLimit && (
+                <p className="text-xs text-slate-600 mt-2 font-medium">
+                  Koleksi kami masih banyak lagi! Silakan cari apa yang sedang Anda butuhkan melalui fitur pencarian di atas, atau tambahkan jumlah tampilan buku.
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       ) : (
         <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 space-y-3">
@@ -807,6 +844,87 @@ export const PublicCatalog: React.FC<PublicCatalogProps> = ({
           >
             Reset Semua Filter
           </button>
+        </div>
+      )}
+
+      {/* Laptops Collection Section */}
+      {laptopsOnly.length > 0 && (
+        <div className="pt-12 border-t border-slate-200/60 mt-12 space-y-6">
+          <div className="text-left space-y-1">
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+              Koleksi Laptop <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-extrabold">Khusus Guru/Staf</span>
+            </h2>
+            <p className="text-sm text-slate-500 font-medium">
+              Fasilitas peminjaman laptop untuk mendukung kegiatan belajar mengajar.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            {laptopsOnly.map((laptop) => {
+              const isAvailable = laptop.available_stock > 0;
+              return (
+                <div
+                  key={laptop.id}
+                  className="bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col overflow-hidden group"
+                >
+                  <div className="relative h-48 bg-slate-100 overflow-hidden cursor-pointer" onClick={() => setSelectedBookDetail(laptop)}>
+                    <img
+                      src={laptop.cover_url}
+                      alt={laptop.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase shadow-xs ${
+                          isAvailable
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-slate-700 text-slate-200'
+                        }`}
+                      >
+                        {isAvailable ? `Tersedia (${laptop.available_stock})` : 'Dipinjam'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-4 flex-1 flex flex-col justify-between space-y-3 text-left">
+                    <div className="space-y-1">
+                      <h4
+                        onClick={() => setSelectedBookDetail(laptop)}
+                        className="font-bold text-slate-900 text-sm line-clamp-2 hover:text-blue-700 cursor-pointer transition-colors"
+                      >
+                        {laptop.title}
+                      </h4>
+                      <p className="text-xs text-slate-500 font-medium truncate">{laptop.author}</p>
+                      <p className="text-[11px] text-slate-400">S/N: {laptop.isbn}</p>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100 space-y-2">
+                      <div className="flex items-center gap-1.5 text-[11px] text-slate-600">
+                        <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                        <span className="truncate font-semibold">{laptop.shelf_location}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          onClick={() => setSelectedBookDetail(laptop)}
+                          className="flex-1 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                        >
+                          Detail Spesifikasi
+                        </button>
+                        <button
+                          onClick={() => setReserveBook(laptop)}
+                          className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg transition-colors cursor-pointer"
+                          title="Reservasi Laptop"
+                        >
+                          <BookmarkCheck className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

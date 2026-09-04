@@ -17,12 +17,14 @@ import {
   Library,
   ShieldCheck,
   Home,
+  Laptop,
 } from 'lucide-react';
 
 export type AdminTab =
   | 'dashboard'
   | 'menu'
   | 'books'
+  | 'laptops'
   | 'members'
   | 'loans'
   | 'visits'
@@ -76,6 +78,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: 'Koleksi Buku',
       icon: BookOpen,
       badge: counts.books,
+      badgeColor: 'bg-slate-100 text-slate-600 font-semibold',
+    },
+    {
+      id: 'laptops' as AdminTab,
+      label: 'Koleksi Laptop',
+      icon: Laptop,
       badgeColor: 'bg-slate-100 text-slate-600 font-semibold',
     },
     {

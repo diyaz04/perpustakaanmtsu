@@ -7,7 +7,8 @@ export type BookCategory =
   | 'IPS & Sejarah'
   | 'Teknologi & Umum'
   | 'Fiksi & Novel'
-  | 'Kamus & Referensi';
+  | 'Kamus & Referensi'
+  | 'Laptop';
 
 export interface Book {
   id: string;

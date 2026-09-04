@@ -48,6 +48,7 @@ import { PublicCatalog } from './components/catalog/PublicCatalog';
 import { DashboardView } from './components/admin/DashboardView';
 import { MenuView } from './components/admin/MenuView';
 import { BooksManagementView } from './components/admin/BooksManagementView';
+import { LaptopsManagementView } from './components/admin/LaptopsManagementView';
 import { MembersManagementView } from './components/admin/MembersManagementView';
 import { CirculationView } from './components/admin/CirculationView';
 import { AttendanceView } from './components/admin/AttendanceView';
@@ -943,12 +944,24 @@ export default function App() {
 
           {adminTab === 'books' && (
             <BooksManagementView
-              books={books}
+              books={books.filter(b => b.category !== 'Laptop')}
               settings={settings}
               onAddBook={handleAddBook}
               onUpdateBook={handleUpdateBook}
               onDeleteBook={handleDeleteBook}
-              onOpenBarcodeModal={(b) => setSelectedBookBarcode(b)}
+              onOpenBarcodeModal={setSelectedBookBarcode}
+              onMarkQrPrinted={handleMarkQrPrinted}
+            />
+          )}
+
+          {adminTab === 'laptops' && (
+            <LaptopsManagementView
+              laptops={books.filter(b => b.category === 'Laptop')}
+              settings={settings}
+              onAddLaptop={handleAddBook}
+              onUpdateLaptop={handleUpdateBook}
+              onDeleteLaptop={handleDeleteBook}
+              onOpenBarcodeModal={setSelectedBookBarcode}
               onMarkQrPrinted={handleMarkQrPrinted}
             />
           )}
