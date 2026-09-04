@@ -206,7 +206,7 @@ export const LaptopsManagementView: React.FC<LaptopsManagementViewProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
         <div>
           <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <LaptopOpen className="w-5 h-5 text-emerald-600" />
+            <Laptop className="w-5 h-5 text-emerald-600" />
             Manajemen Koleksi Laptop Perpustakaan
           </h2>
           <p className="text-xs text-slate-500">
