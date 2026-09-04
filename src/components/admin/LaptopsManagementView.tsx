@@ -122,7 +122,10 @@ export const LaptopsManagementView: React.FC<LaptopsManagementViewProps> = ({
     });
   };
   const selectedLaptops = laptops.filter((b) => selectedIds.has(b.id));
-  const totalQrToPrint = selectedLaptops.reduce((s, b) => s + b.stock, 0);
+  const totalQrToPrint = selectedLaptops.reduce((s, b) => {
+    const printed = b.qr_printed_count || 0;
+    return s + Math.max(0, b.stock - printed);
+  }, 0);
 
   const openAddModal = () => {
     setEditingLaptop(null);

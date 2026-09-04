@@ -18,16 +18,28 @@ export const BulkQRPrintModal: React.FC<BulkQRPrintModalProps> = ({
 }) => {
   const printFrameRef = useRef<HTMLIFrameElement>(null);
 
-  // Total QR codes = sum of stock across selected books
-  const totalQrCount = selectedBooks.reduce((sum, b) => sum + b.stock, 0);
+  // Hanya cetak QR yang belum pernah dicetak
+  const totalQrCount = selectedBooks.reduce((sum, b) => {
+    const printed = b.qr_printed_count || 0;
+    return sum + Math.max(0, b.stock - printed);
+  }, 0);
 
   const handlePrint = async () => {
-    // Build an array of { book, copyNumber } for each physical copy
+    // Build an array of { book, copyNumber } for each physical copy (only unprinted ones)
     const copies: { book: Book; copyIndex: number }[] = [];
     for (const book of selectedBooks) {
-      for (let i = 1; i <= book.stock; i++) {
-        copies.push({ book, copyIndex: i });
+      const printed = book.qr_printed_count || 0;
+      const unprinted = Math.max(0, book.stock - printed);
+      for (let i = 1; i <= unprinted; i++) {
+        // Label copyIndex continues from the last printed one
+        copies.push({ book, copyIndex: printed + i });
       }
+    }
+
+    if (copies.length === 0) {
+      alert("Semua label QR untuk buku-buku yang dipilih sudah pernah dicetak. Tidak ada label baru yang perlu dicetak.");
+      onClose();
+      return;
     }
 
     // Generate QR data URLs for all copies
@@ -197,7 +209,7 @@ export const BulkQRPrintModal: React.FC<BulkQRPrintModalProps> = ({
                     <div className="font-extrabold text-slate-900 text-xs truncate">{book.title}</div>
                     <div className="text-[10px] text-slate-500 font-bold">{book.isbn}</div>
                     <div className="text-[10px] text-emerald-700 font-extrabold mt-0.5">
-                      Akan cetak: <span className="text-emerald-800">{total}</span> QR (= stok eksemplar)
+                      Akan cetak: <span className="text-emerald-800">{Math.max(0, total - printed)}</span> QR baru
                     </div>
                   </div>
                   <div className={`text-right shrink-0 text-[10px] font-extrabold px-2 py-1 rounded-lg ${

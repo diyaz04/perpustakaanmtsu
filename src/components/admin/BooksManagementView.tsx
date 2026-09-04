@@ -122,7 +122,10 @@ export const BooksManagementView: React.FC<BooksManagementViewProps> = ({
     });
   };
   const selectedBooks = books.filter((b) => selectedIds.has(b.id));
-  const totalQrToPrint = selectedBooks.reduce((s, b) => s + b.stock, 0);
+  const totalQrToPrint = selectedBooks.reduce((s, b) => {
+    const printed = b.qr_printed_count || 0;
+    return s + Math.max(0, b.stock - printed);
+  }, 0);
 
   const openAddModal = () => {
     setEditingBook(null);
