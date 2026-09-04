@@ -1,6 +1,8 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Member, LibrarySettings } from '../../types';
-import { X, Printer, CreditCard, AlertCircle } from 'lucide-react';
+import { X, Printer, CreditCard, AlertCircle, Download, FileText, CheckCircle2 } from 'lucide-react';
+import { toPng } from 'html-to-image';
+import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
 
 interface BulkMemberCardPrintModalProps {
@@ -16,18 +18,30 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
 }) => {
   const printFrameRef = useRef<HTMLIFrameElement>(null);
   const [template, setTemplate] = useState<'siswa' | 'perpus'>('siswa');
+  const [qrDataUrls, setQrDataUrls] = useState<string[]>([]);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadSuccess, setDownloadSuccess] = useState(false);
+  const cardsRef = useRef<(HTMLDivElement | null)[]>([]);
+  const backCardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const generateQRs = async () => {
+      const urls = await Promise.all(
+        selectedMembers.map((m) =>
+          QRCode.toDataURL(m.member_number, {
+            width: 200,
+            margin: 1,
+            color: { dark: '#064e3b', light: '#ffffff' },
+          })
+        )
+      );
+      setQrDataUrls(urls);
+    };
+    generateQRs();
+  }, [selectedMembers]);
 
   const handlePrint = async () => {
-    // Generate all QR code data URLs
-    const qrDataUrls = await Promise.all(
-      selectedMembers.map((m) =>
-        QRCode.toDataURL(m.member_number, {
-          width: 200,
-          margin: 1,
-          color: { dark: '#064e3b', light: '#ffffff' },
-        })
-      )
-    );
+    if (qrDataUrls.length === 0) return;
 
     const frontImgSrc = template === 'siswa' ? '/assets/card-front.png' : '/assets/card-front-perpus.png';
     const backImgSrc = template === 'siswa' ? '/assets/card-back.png' : '/assets/card-back-perpus.png';
@@ -175,6 +189,49 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
     }, 800);
   };
 
+  const handleDownloadPDF = async () => {
+    try {
+      setIsDownloading(true);
+      setDownloadSuccess(false);
+      
+      const cardW = 53.98;
+      const cardH = 85.6;
+      
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [cardW, cardH],
+      });
+
+      // Capture all front cards
+      for (let i = 0; i < selectedMembers.length; i++) {
+        const el = cardsRef.current[i];
+        if (!el) continue;
+        
+        if (i > 0) pdf.addPage([cardW, cardH], 'portrait');
+        const dataUrl = await toPng(el, { pixelRatio: 4, cacheBust: true });
+        pdf.addImage(dataUrl, 'PNG', 0, 0, cardW, cardH);
+      }
+
+      // Add back card
+      if (backCardRef.current) {
+        pdf.addPage([cardW, cardH], 'portrait');
+        const backDataUrl = await toPng(backCardRef.current, { pixelRatio: 4, cacheBust: true });
+        pdf.addImage(backDataUrl, 'PNG', 0, 0, cardW, cardH);
+      }
+
+      pdf.save('Kartu_Anggota_Massal.pdf');
+
+      setDownloadSuccess(true);
+      setTimeout(() => setDownloadSuccess(false), 3000);
+    } catch (err) {
+      console.error(err);
+      alert('Gagal mengeksport PDF.');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden flex flex-col">
@@ -232,13 +289,28 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
         </div>
 
         {/* Footer */}
-        <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2.5 text-xs font-extrabold text-slate-500 hover:bg-slate-100 rounded-xl">
+        <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex flex-wrap justify-end gap-2 shrink-0">
+          <button onClick={onClose} className="px-4 py-2.5 text-xs font-extrabold text-slate-500 hover:bg-slate-100 rounded-xl cursor-pointer">
             Batal
           </button>
           <button
+            onClick={handleDownloadPDF}
+            disabled={isDownloading || qrDataUrls.length === 0}
+            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-xs font-extrabold rounded-xl shadow-md flex items-center gap-2 cursor-pointer transition-all"
+          >
+            {isDownloading ? (
+              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : downloadSuccess ? (
+              <CheckCircle2 className="w-4 h-4" />
+            ) : (
+              <FileText className="w-4 h-4" />
+            )}
+            <span>{isDownloading ? 'Memproses...' : downloadSuccess ? 'Berhasil' : 'Download PDF'}</span>
+          </button>
+          <button
             onClick={handlePrint}
-            className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-xl shadow-md flex items-center gap-2"
+            disabled={isDownloading || qrDataUrls.length === 0}
+            className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white text-xs font-extrabold rounded-xl shadow-md flex items-center gap-2 cursor-pointer transition-all"
           >
             <Printer className="w-4 h-4" />
             Proses Cetak
@@ -246,6 +318,49 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
         </div>
       </div>
       <iframe ref={printFrameRef} style={{ display: 'none' }} title="Print Frame" />
+
+      {/* HIDDEN ELEMENTS FOR PDF */}
+      <div className="fixed -left-[9999px] -top-[9999px] opacity-0 pointer-events-none">
+        {selectedMembers.map((member, i) => (
+          <div
+            key={`front-${member.id}`}
+            ref={(el) => (cardsRef.current[i] = el)}
+            className="w-[224px] h-[356px] relative bg-white"
+            style={{ aspectRatio: '53.98/85.6' }}
+          >
+            <img src={template === 'siswa' ? "/assets/card-front.png" : "/assets/card-front-perpus.png"} alt="bg" className="absolute inset-0 w-full h-full object-cover" crossOrigin="anonymous" />
+            <div className="relative z-10 h-full flex flex-col items-center pt-[100px]">
+              <div className="w-[85px] h-[105px] rounded-xl overflow-hidden bg-white/20 shadow-md">
+                <img src={member.photo_url || 'https://via.placeholder.com/150'} alt="Foto" className="w-full h-full object-cover" crossOrigin="anonymous" />
+              </div>
+              <div className="mt-5 text-center w-full px-2 flex flex-col items-center">
+                <div className="font-extrabold text-[12px] uppercase tracking-wide leading-tight text-[#266b44]">{member.name}</div>
+                <div className="text-[9px] font-bold text-[#3a835a] mt-1 tracking-wider">{member.member_number}</div>
+                <div className="text-[7px] font-bold text-[#3a835a] mt-1.5 uppercase">
+                  TASIKMALAYA, {new Date(member.registered_at).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'})}
+                </div>
+                <div className="text-[7px] font-bold text-[#3a835a] mt-0.5 uppercase">{member.class_or_position}</div>
+              </div>
+              <div className="absolute bottom-[20px] left-1/2 -translate-x-1/2 bg-white p-1 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center">
+                <div className="bg-white rounded shadow-sm flex items-center justify-center p-0.5">
+                  {qrDataUrls[i] ? (
+                    <img src={qrDataUrls[i]} alt="QR" className="w-[45px] h-[45px] object-contain" />
+                  ) : (
+                    <div className="w-[45px] h-[45px] bg-slate-100" />
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+        <div
+          ref={backCardRef}
+          className="w-[224px] h-[356px] relative bg-white"
+          style={{ aspectRatio: '53.98/85.6' }}
+        >
+          <img src={template === 'siswa' ? "/assets/card-back.png" : "/assets/card-back-perpus.png"} alt="bg" className="w-full h-full object-cover" crossOrigin="anonymous" />
+        </div>
+      </div>
     </div>
   );
 };
