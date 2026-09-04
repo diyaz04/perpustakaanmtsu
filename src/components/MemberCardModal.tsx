@@ -30,7 +30,6 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
-  const [generalQrUrl, setGeneralQrUrl] = useState<string>('');
 
   const cardFrontRef = useRef<HTMLDivElement>(null);
   const cardBackRef = useRef<HTMLDivElement>(null);
@@ -44,11 +43,6 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
         color: { dark: '#064e3b', light: '#ffffff' },
       }).then(setQrDataUrl).catch(console.error);
     }
-    QRCode.toDataURL("Kartu ini Resmi dan Valid - Tercatat di Sistem Informasi Perpustakaan MTsS KH. A. Wahab Muhsin Tasikmalaya", {
-      width: 150,
-      margin: 1,
-      color: { dark: '#064e3b', light: '#ffffff' },
-    }).then(setGeneralQrUrl).catch(console.error);
   }, [member?.member_number]);
 
   if (!isOpen || !member) return null;
@@ -307,15 +301,6 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
                 style={{ aspectRatio: '53.98/85.6' }}
               >
                 <img src={template === 'siswa' ? "/assets/card-back.png" : "/assets/card-back-perpus.png"} alt="Card Back Background" className="w-full h-full object-cover" crossOrigin="anonymous" />
-                
-                {/* General Validation QR for Perpus Template */}
-                {template === 'perpus' && generalQrUrl && (
-                  <div className="absolute bottom-[35px] left-1/2 -translate-x-1/2 bg-white/90 p-1 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center">
-                    <div className="bg-white rounded shadow-sm flex items-center justify-center p-0.5">
-                      <img src={generalQrUrl} alt="QR Validasi" className="w-[35px] h-[35px] object-contain" />
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>
