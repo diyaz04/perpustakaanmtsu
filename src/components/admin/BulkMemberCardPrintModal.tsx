@@ -19,6 +19,7 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
   const printFrameRef = useRef<HTMLIFrameElement>(null);
   const [template, setTemplate] = useState<'siswa' | 'perpus'>('siswa');
   const [qrDataUrls, setQrDataUrls] = useState<string[]>([]);
+  const [generalQrUrl, setGeneralQrUrl] = useState<string>('');
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
   const cardsRef = useRef<(HTMLDivElement | null)[]>([]);
@@ -36,6 +37,13 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
         )
       );
       setQrDataUrls(urls);
+      
+      const genQr = await QRCode.toDataURL("Kartu ini Resmi dan Valid - Tercatat di Sistem Informasi Perpustakaan MTsS KH. A. Wahab Muhsin Tasikmalaya", {
+        width: 150,
+        margin: 1,
+        color: { dark: '#064e3b', light: '#ffffff' },
+      });
+      setGeneralQrUrl(genQr);
     };
     generateQRs();
   }, [selectedMembers]);
@@ -78,10 +86,14 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
       })
       .join('');
 
-    // Single Back Card
     const backCardHtml = `
       <div class="card card-back page-break-before">
         <img class="bg-img" src="${backImgSrc}" alt="Back" />
+        ${template === 'perpus' && generalQrUrl ? `
+          <div class="qr-general">
+            <img src="${generalQrUrl}" alt="QR Validasi" />
+          </div>
+        ` : ''}
       </div>
     `;
 
@@ -168,6 +180,20 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
   }
   
   .qr-box img { width: 11mm; height: 11mm; display: block; }
+  
+  .qr-general {
+    position: absolute;
+    bottom: 8.5mm;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 255, 255, 0.9);
+    padding: 1mm;
+    border-radius: 2px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    z-index: 10;
+  }
+  
+  .qr-general img { width: 9mm; height: 9mm; display: block; }
 </style>
 </head>
 <body>
@@ -359,6 +385,14 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
           style={{ aspectRatio: '53.98/85.6' }}
         >
           <img src={template === 'siswa' ? "/assets/card-back.png" : "/assets/card-back-perpus.png"} alt="bg" className="w-full h-full object-cover" crossOrigin="anonymous" />
+          
+          {template === 'perpus' && generalQrUrl && (
+            <div className="absolute bottom-[35px] left-1/2 -translate-x-1/2 bg-white/90 p-1 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center">
+              <div className="bg-white rounded shadow-sm flex items-center justify-center p-0.5">
+                <img src={generalQrUrl} alt="QR Validasi" className="w-[35px] h-[35px] object-contain" />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
