@@ -19,7 +19,9 @@ import {
   Upload,
   FileSpreadsheet,
   X,
+  Printer
 } from 'lucide-react';
+import { BulkMemberCardPrintModal } from './BulkMemberCardPrintModal';
 
 interface MembersManagementViewProps {
   members: Member[];
@@ -155,6 +157,8 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
   };
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [historyMember, setHistoryMember] = useState<Member | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBulkPrintOpen, setIsBulkPrintOpen] = useState(false);
 
   // Form Fields
   const [name, setName] = useState('');
@@ -186,6 +190,33 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
+
+  const allPageSelected = paginatedMembers.length > 0 && paginatedMembers.every((m) => selectedIds.has(m.id));
+  const toggleAll = () => {
+    if (allPageSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        paginatedMembers.forEach((m) => next.delete(m.id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        paginatedMembers.forEach((m) => next.add(m.id));
+        return next;
+      });
+    }
+  };
+
+  const toggleOne = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const selectedMembers = members.filter((m) => selectedIds.has(m.id));
 
   const openAddModal = () => {
     setEditingMember(null);
@@ -262,6 +293,16 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {selectedIds.size > 0 && (
+            <button
+              onClick={() => setIsBulkPrintOpen(true)}
+              className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Cetak Massal ({selectedIds.size})</span>
+            </button>
+          )}
+
           {/* Download Template Button */}
           <button
             onClick={handleDownloadTemplate}
@@ -345,6 +386,14 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50 text-slate-500 font-bold uppercase text-[10px]">
+                <th className="py-3.5 px-4 w-10 text-center">
+                  <input
+                    type="checkbox"
+                    checked={allPageSelected}
+                    onChange={toggleAll}
+                    className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                  />
+                </th>
                 <th className="py-3.5 px-4">Foto & Nama Anggota</th>
                 <th className="py-3.5 px-4">NIS / NIP</th>
                 <th className="py-3.5 px-4">Role & Kelas/Jabatan</th>
@@ -357,6 +406,14 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
               {paginatedMembers.length > 0 ? (
                 paginatedMembers.map((m) => (
                   <tr key={m.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-3.5 px-4 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(m.id)}
+                        onChange={() => toggleOne(m.id)}
+                        className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                      />
+                    </td>
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-3">
                         <img
@@ -436,7 +493,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-400">
+                  <td colSpan={7} className="py-8 text-center text-slate-400">
                     Tidak ada data anggota ditemukan.
                   </td>
                 </tr>
@@ -712,6 +769,14 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
             </form>
           </div>
         </div>
+      )}
+      
+      {isBulkPrintOpen && selectedIds.size > 0 && (
+        <BulkMemberCardPrintModal
+          selectedMembers={selectedMembers}
+          settings={settings}
+          onClose={() => setIsBulkPrintOpen(false)}
+        />
       )}
     </div>
   );
