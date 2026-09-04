@@ -1,6 +1,6 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Book, LibrarySettings } from '../../types';
-import { X, Printer, QrCode, AlertCircle } from 'lucide-react';
+import { X, Printer, QrCode, AlertCircle, RefreshCw } from 'lucide-react';
 import QRCode from 'qrcode';
 
 interface BulkQRPrintModalProps {
@@ -17,28 +17,33 @@ export const BulkQRPrintModal: React.FC<BulkQRPrintModalProps> = ({
   onPrintDone,
 }) => {
   const printFrameRef = useRef<HTMLIFrameElement>(null);
+  const [reprintAll, setReprintAll] = useState(false);
 
-  // Hanya cetak QR yang belum pernah dicetak
+  // Total QR codes
   const totalQrCount = selectedBooks.reduce((sum, b) => {
+    if (reprintAll) return sum + b.stock;
     const printed = b.qr_printed_count || 0;
     return sum + Math.max(0, b.stock - printed);
   }, 0);
 
   const handlePrint = async () => {
-    // Build an array of { book, copyNumber } for each physical copy (only unprinted ones)
     const copies: { book: Book; copyIndex: number }[] = [];
     for (const book of selectedBooks) {
-      const printed = book.qr_printed_count || 0;
-      const unprinted = Math.max(0, book.stock - printed);
-      for (let i = 1; i <= unprinted; i++) {
-        // Label copyIndex continues from the last printed one
-        copies.push({ book, copyIndex: printed + i });
+      if (reprintAll) {
+        for (let i = 1; i <= book.stock; i++) {
+          copies.push({ book, copyIndex: i });
+        }
+      } else {
+        const printed = book.qr_printed_count || 0;
+        const unprinted = Math.max(0, book.stock - printed);
+        for (let i = 1; i <= unprinted; i++) {
+          copies.push({ book, copyIndex: printed + i });
+        }
       }
     }
 
     if (copies.length === 0) {
       alert("Semua label QR untuk buku-buku yang dipilih sudah pernah dicetak. Tidak ada label baru yang perlu dicetak.");
-      onClose();
       return;
     }
 
@@ -177,16 +182,31 @@ export const BulkQRPrintModal: React.FC<BulkQRPrintModalProps> = ({
         {/* Book List */}
         <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
           {/* Summary */}
-          <div className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-100 rounded-2xl">
-            <Printer className="w-5 h-5 text-emerald-600 shrink-0" />
-            <div className="text-xs">
-              <div className="font-extrabold text-emerald-900">
-                Total QR yang akan dicetak: <span className="text-emerald-600 text-base">{totalQrCount}</span> lembar
-              </div>
-              <div className="text-emerald-700 font-semibold mt-0.5">
-                dari {selectedBooks.length} judul buku yang dipilih
+          <div className="flex flex-col sm:flex-row gap-3 p-4 bg-emerald-50 border border-emerald-100 rounded-2xl">
+            <div className="flex items-center gap-3 flex-1">
+              <Printer className="w-5 h-5 text-emerald-600 shrink-0" />
+              <div className="text-xs">
+                <div className="font-extrabold text-emerald-900">
+                  Total QR yang akan dicetak: <span className="text-emerald-600 text-base">{totalQrCount}</span> lembar
+                </div>
+                <div className="text-emerald-700 font-semibold mt-0.5">
+                  dari {selectedBooks.length} judul buku yang dipilih
+                </div>
               </div>
             </div>
+            
+            {/* Reprint Toggle */}
+            <button
+              onClick={() => setReprintAll(!reprintAll)}
+              className={`px-3 py-2 text-[10px] font-extrabold rounded-xl border flex items-center gap-1.5 transition-all cursor-pointer h-fit sm:self-center ${
+                reprintAll 
+                  ? 'bg-amber-100 border-amber-200 text-amber-800 shadow-sm' 
+                  : 'bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-100/50'
+              }`}
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${reprintAll ? 'animate-spin-slow' : ''}`} />
+              {reprintAll ? 'Cetak Ulang Semua Aktif' : 'Cetak Ulang yang Sudah'}
+            </button>
           </div>
 
           {/* Per-book breakdown */}
@@ -198,6 +218,8 @@ export const BulkQRPrintModal: React.FC<BulkQRPrintModalProps> = ({
               const printed = book.qr_printed_count ?? 0;
               const total = book.stock;
               const allPrinted = printed >= total;
+              const toPrint = reprintAll ? total : Math.max(0, total - printed);
+
               return (
                 <div key={book.id} className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
                   <img
@@ -209,7 +231,7 @@ export const BulkQRPrintModal: React.FC<BulkQRPrintModalProps> = ({
                     <div className="font-extrabold text-slate-900 text-xs truncate">{book.title}</div>
                     <div className="text-[10px] text-slate-500 font-bold">{book.isbn}</div>
                     <div className="text-[10px] text-emerald-700 font-extrabold mt-0.5">
-                      Akan cetak: <span className="text-emerald-800">{Math.max(0, total - printed)}</span> QR baru
+                      Akan cetak: <span className="text-emerald-800">{toPrint}</span> QR {reprintAll ? '(= semua eksemplar)' : 'baru'}
                     </div>
                   </div>
                   <div className={`text-right shrink-0 text-[10px] font-extrabold px-2 py-1 rounded-lg ${
