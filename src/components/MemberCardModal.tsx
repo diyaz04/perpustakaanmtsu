@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Member, LibrarySettings } from '../types';
 import {
   X,
@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
-import { generateQRMatrix } from '../lib/qrUtils';
+import QRCode from 'qrcode';
 
 interface MemberCardModalProps {
   isOpen: boolean;
@@ -28,14 +28,23 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
   const [activeSide, setActiveSide] = useState<'front' | 'back' | 'both'>('both');
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
 
   const cardFrontRef = useRef<HTMLDivElement>(null);
   const cardBackRef = useRef<HTMLDivElement>(null);
   const cardBothRef = useRef<HTMLDivElement>(null);
 
-  if (!isOpen || !member) return null;
+  useEffect(() => {
+    if (member?.member_number) {
+      QRCode.toDataURL(member.member_number, {
+        width: 150,
+        margin: 1,
+        color: { dark: '#064e3b', light: '#ffffff' },
+      }).then(setQrDataUrl).catch(console.error);
+    }
+  }, [member?.member_number]);
 
-  const qrMatrix = generateQRMatrix(member.member_number);
+  if (!isOpen || !member) return null;
   const isGuru = member.role === 'guru';
   const isFrontVisible = activeSide === 'both' || activeSide === 'front';
   const isBackVisible = activeSide === 'both' || activeSide === 'back';
@@ -262,13 +271,11 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
                     {/* QR Code at the bottom center */}
                     <div className="absolute bottom-[20px] left-1/2 -translate-x-1/2 bg-white p-1 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center">
                       <div className="bg-white rounded shadow-sm flex items-center justify-center p-0.5">
-                        <svg width="45" height="45" viewBox="0 0 21 21">
-                          {qrMatrix.map((row, r) =>
-                            row.map((cell, c) =>
-                              cell ? <rect key={`${r}-${c}`} x={c} y={r} width="1" height="1" fill="#064e3b" /> : null
-                            )
-                          )}
-                        </svg>
+                        {qrDataUrl ? (
+                          <img src={qrDataUrl} alt="QR Code" className="w-[45px] h-[45px] object-contain" />
+                        ) : (
+                          <div className="w-[45px] h-[45px] bg-slate-100 animate-pulse" />
+                        )}
                       </div>
                     </div>
                   </div>
