@@ -65,11 +65,13 @@ export const BulkQRPrintModal: React.FC<BulkQRPrintModalProps> = ({
       .map(
         ({ book, copyIndex }, idx) => `
         <div class="qr-card">
-          <div class="qr-header">${libraryName}</div>
-          <img src="${qrDataUrls[idx]}" alt="QR" />
-          <div class="qr-title">${book.title.length > 28 ? book.title.slice(0, 25) + '…' : book.title}</div>
-          <div class="qr-sub">${book.isbn}</div>
-          <div class="qr-copy">Eks. ${copyIndex} / ${book.stock} • ${book.shelf_location}</div>
+          <img class="qr-img" src="${qrDataUrls[idx]}" alt="QR" />
+          <div class="qr-info">
+            <div class="qr-header">${libraryName}</div>
+            <div class="qr-title">${book.title.length > 25 ? book.title.slice(0, 23) + '…' : book.title}</div>
+            <div class="qr-sub">${book.isbn}</div>
+            <div class="qr-copy">Eks. ${copyIndex}/${book.stock} • ${book.shelf_location.length > 10 ? book.shelf_location.slice(0,10)+'…' : book.shelf_location}</div>
+          </div>
         </div>`
       )
       .join('');
@@ -78,61 +80,95 @@ export const BulkQRPrintModal: React.FC<BulkQRPrintModalProps> = ({
 <html>
 <head>
 <meta charset="UTF-8" />
-<title>Cetak QR Code Buku</title>
+<title>Cetak QR Label 103</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Arial', sans-serif; background: #fff; }
+  
+  /* Container diset untuk 3 kolom */
   .grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 6px;
-    padding: 10px;
+    grid-template-columns: repeat(3, 64mm);
+    gap: 2mm;
+    padding: 5mm; /* Margin tepi kertas */
+    justify-content: center;
   }
+  
+  /* Ukuran presisi Label 103 (64x32mm) */
   .qr-card {
-    border: 1px solid #d1fae5;
-    border-radius: 8px;
-    padding: 6px 4px;
-    text-align: center;
-    background: #f0fdf4;
+    width: 64mm;
+    height: 32mm;
+    border: 1px dashed #ccc; /* Garis potong bantu, hilangkan jika tidak perlu */
+    border-radius: 4px;
+    padding: 3mm;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    gap: 2mm;
+    overflow: hidden;
     break-inside: avoid;
     page-break-inside: avoid;
   }
+  
+  .qr-img {
+    width: 26mm;
+    height: 26mm;
+    object-fit: contain;
+    flex-shrink: 0;
+  }
+  
+  .qr-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  
   .qr-header {
-    font-size: 6.5px;
+    font-size: 7px;
     font-weight: 900;
     color: #065f46;
     text-transform: uppercase;
-    letter-spacing: .5px;
-    margin-bottom: 3px;
+    margin-bottom: 2px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .qr-card img { width: 70px; height: 70px; display: block; margin: 0 auto; }
+  
   .qr-title {
-    font-size: 6px;
+    font-size: 7px;
     font-weight: 700;
     color: #1e293b;
-    margin-top: 3px;
-    line-height: 1.3;
-    min-height: 14px;
+    line-height: 1.2;
+    margin-bottom: 2px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
+  
   .qr-sub {
-    font-size: 5.5px;
+    font-size: 6px;
     color: #64748b;
     font-family: monospace;
-    margin-top: 1px;
+    margin-bottom: 2px;
   }
+  
   .qr-copy {
-    font-size: 5.5px;
+    font-size: 6px;
     color: #059669;
     font-weight: 700;
-    margin-top: 2px;
     border-top: 1px solid #a7f3d0;
     padding-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
+  
   @media print {
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .qr-card { border: none; } /* Hilangkan border saat benar-benar dicetak di label */
   }
 </style>
 </head>

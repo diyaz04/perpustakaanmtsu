@@ -76,12 +76,12 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
       const frontDataUrl = await toPng(cardFrontRef.current, { pixelRatio: 4, cacheBust: true });
       const backDataUrl  = await toPng(cardBackRef.current,  { pixelRatio: 4, cacheBust: true });
 
-      // PDF page = exact card dimensions (ISO ID-1 / KTP)
-      const cardW = 85.6;  // mm
-      const cardH = 53.98; // mm
+      // PDF page = exact card dimensions (ISO ID-1 / KTP portrait)
+      const cardW = 53.98;  // mm
+      const cardH = 85.6; // mm
 
       const pdf = new jsPDF({
-        orientation: 'landscape',
+        orientation: 'portrait',
         unit: 'mm',
         format: [cardW, cardH], // custom page = card size
       });
@@ -90,7 +90,7 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
       pdf.addImage(frontDataUrl, 'PNG', 0, 0, cardW, cardH);
 
       // Page 2 — Back card fills entire page
-      pdf.addPage([cardW, cardH], 'landscape');
+      pdf.addPage([cardW, cardH], 'portrait');
       pdf.addImage(backDataUrl, 'PNG', 0, 0, cardW, cardH);
 
       pdf.save(`Kartu_Anggota_${member.name.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
@@ -148,8 +148,8 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
             position: absolute !important;
             left: 0 !important;
             top: 0 !important;
-            width: 85.6mm !important;
-            height: 53.98mm !important;
+            width: 53.98mm !important;
+            height: 85.6mm !important;
             margin: 0 !important;
             padding: 0 !important;
             box-shadow: none !important;
@@ -163,8 +163,8 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
             position: absolute !important;
             left: 0 !important;
             top: 0 !important;
-            width: 85.6mm !important;
-            height: 53.98mm !important;
+            width: 53.98mm !important;
+            height: 85.6mm !important;
             margin: 0 !important;
             padding: 0 !important;
             box-shadow: none !important;
@@ -225,120 +225,47 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
                 <div
                   ref={cardFrontRef}
                   id="printable-member-card-front"
-                  className="w-[356px] h-[224px] rounded-2xl overflow-hidden relative shadow-2xl shrink-0 select-none"
-                  style={{ aspectRatio: '85.6/53.98' }}
+                  className="w-[224px] h-[356px] rounded-xl overflow-hidden relative shadow-2xl shrink-0 select-none bg-white"
+                  style={{ aspectRatio: '53.98/85.6' }}
                 >
-                  {/* Base gradient background */}
-                  <div
-                    className="absolute inset-0"
-                    style={{ background: `linear-gradient(135deg, ${accentFrom} 0%, ${accentMid} 55%, ${accentTo} 100%)` }}
-                  />
-
-                  {/* Decorative circles */}
-                  <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full opacity-10 bg-white" />
-                  <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full opacity-10 bg-white" />
-                  <div className="absolute top-6 right-16 w-16 h-16 rounded-full opacity-5 bg-white" />
-
-                  {/* Horizontal accent stripe */}
-                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400" />
-
+                  {/* Background Image */}
+                  <img src="/assets/card-front.png" alt="Card Front Background" className="absolute inset-0 w-full h-full object-cover" crossOrigin="anonymous" />
+                  
                   {/* Content layout */}
-                  <div className="relative z-10 h-full flex flex-col">
-                    {/* Card header */}
-                    <div className="flex items-center gap-2.5 px-3.5 pt-3 pb-2">
-                      <div className="w-9 h-9 rounded-full bg-white/15 backdrop-blur-sm border border-white/30 flex items-center justify-center overflow-hidden shrink-0">
-                        <img
-                          src={settings.logo_url || 'https://lh3.googleusercontent.com/d/1TsAyUBmWgRpU18qwOxLlmKvI-HL1kRvt'}
-                          alt="Logo"
-                          className="w-full h-full object-contain"
-                          crossOrigin="anonymous"
-                        />
+                  <div className="relative z-10 h-full flex flex-col items-center pt-[100px]">
+                    {/* Photo */}
+                    <div className="w-[85px] h-[105px] rounded-xl overflow-hidden bg-white/20 shadow-md">
+                      <img
+                        src={member.photo_url || 'https://via.placeholder.com/150'}
+                        alt="Foto"
+                        className="w-full h-full object-cover"
+                        crossOrigin="anonymous"
+                      />
+                    </div>
+                    
+                    {/* Details */}
+                    <div className="mt-5 text-center w-full px-2 flex flex-col items-center">
+                      <div className="font-extrabold text-[12px] uppercase tracking-wide leading-tight text-[#266b44]">
+                        {member.name}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[7px] font-extrabold text-white/60 uppercase tracking-widest leading-none">
-                          Kartu Anggota Perpustakaan
-                        </div>
-                        <div className="text-[10.5px] font-black text-white leading-tight truncate mt-0.5">
-                          {settings.school_name}
-                        </div>
-                        <div className="text-[7.5px] text-white/70 font-semibold truncate leading-none">
-                          {settings.library_name}
-                        </div>
+                      <div className="text-[9px] font-bold text-[#3a835a] mt-1 tracking-wider">
+                        {member.member_number}
                       </div>
-                      <div
-                        className="shrink-0 px-2 py-0.5 rounded text-[7px] font-extrabold uppercase tracking-wider"
-                        style={{ background: 'rgba(251,191,36,0.9)', color: accentFrom }}
-                      >
-                        {isGuru ? 'GURU' : 'SISWA'}
+                      <div className="text-[7px] font-bold text-[#3a835a] mt-1.5 uppercase">
+                        TASIKMALAYA, {new Date(member.registered_at).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'})}
+                      </div>
+                      <div className="text-[7px] font-bold text-[#3a835a] mt-0.5 uppercase">
+                        {member.class_or_position}
                       </div>
                     </div>
-
-                    {/* Divider */}
-                    <div className="mx-3.5 h-px bg-white/15" />
-
-                    {/* Body */}
-                    <div className="flex flex-1 items-center gap-3 px-3.5 py-2">
-                      {/* Photo */}
-                      <div className="shrink-0 relative">
-                        <div className="w-[60px] h-[76px] rounded-xl overflow-hidden border-2 border-white/40 shadow-lg">
-                          <img
-                            src={member.photo_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'}
-                            alt={member.name}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div
-                          className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center text-[8px] font-black text-white"
-                          style={{ background: accentMid }}
-                        >
-                          ✓
-                        </div>
-                      </div>
-
-                      {/* Info */}
-                      <div className="flex-1 min-w-0 space-y-1.5">
-                        <div>
-                          <div className="text-[6.5px] font-extrabold text-white/50 uppercase tracking-widest">Nama Lengkap</div>
-                          <div className="text-[12px] font-black text-white leading-tight truncate uppercase">{member.name}</div>
-                        </div>
-                        <div>
-                          <div className="text-[6.5px] font-extrabold text-white/50 uppercase tracking-widest">
-                            {isGuru ? 'NIP' : 'NIS / No. Anggota'}
-                          </div>
-                          <div
-                            className="text-[10px] font-mono font-extrabold px-2 py-0.5 rounded-lg inline-block"
-                            style={{ background: 'rgba(255,255,255,0.15)', color: '#fef3c7', border: '1px solid rgba(255,255,255,0.25)' }}
-                          >
-                            {member.member_number}
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-1.5">
-                          <div>
-                            <div className="text-[6.5px] font-extrabold text-white/50 uppercase tracking-widest">Kelas / Jabatan</div>
-                            <div className="text-[8.5px] font-bold text-white/90 truncate">{member.class_or_position}</div>
-                          </div>
-                          <div>
-                            <div className="text-[6.5px] font-extrabold text-white/50 uppercase tracking-widest">T.A. Berlaku</div>
-                            <div className="text-[8.5px] font-bold text-white/90">2026/2027</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Footer */}
-                    <div
-                      className="flex items-center justify-between px-3.5 py-1.5 shrink-0"
-                      style={{ background: 'rgba(0,0,0,0.25)', borderTop: '1px solid rgba(255,255,255,0.1)' }}
-                    >
-                      <div className="text-[7px] font-bold text-white/60 italic">
-                        Kartu ini adalah milik {settings.library_name}
-                      </div>
-                      {/* Mini QR */}
-                      <div className="bg-white rounded p-0.5 shadow-sm">
-                        <svg width="26" height="26" viewBox="0 0 21 21">
+                    
+                    {/* QR Code at the bottom center */}
+                    <div className="absolute bottom-[20px] left-1/2 -translate-x-1/2 bg-white p-1 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center">
+                      <div className="bg-white rounded shadow-sm flex items-center justify-center p-0.5">
+                        <svg width="45" height="45" viewBox="0 0 21 21">
                           {qrMatrix.map((row, r) =>
                             row.map((cell, c) =>
-                              cell ? <rect key={`${r}-${c}`} x={c} y={r} width="1" height="1" fill={accentFrom} /> : null
+                              cell ? <rect key={`${r}-${c}`} x={c} y={r} width="1" height="1" fill="#064e3b" /> : null
                             )
                           )}
                         </svg>
@@ -351,101 +278,15 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
             {/* ── BACK ─────────────────────────────────────────────── */}
             <div className={`flex flex-col items-center gap-1.5 ${isBackVisible ? '' : 'screen-only-hidden'} ${isBackVisible ? '' : 'print-only-hidden'}`}>
               <span className="text-[10px] uppercase font-extrabold text-slate-400 tracking-widest no-print">Sisi Belakang</span>
-                <div
-                  ref={cardBackRef}
-                  id="printable-member-card-back"
-                  className="w-[356px] h-[224px] rounded-2xl overflow-hidden relative shadow-2xl shrink-0 select-none bg-white"
-                  style={{ aspectRatio: '85.6/53.98' }}
-                >
-                  {/* Top accent bar */}
-                  <div
-                    className="absolute top-0 left-0 right-0 h-10"
-                    style={{ background: `linear-gradient(135deg, ${accentFrom}, ${accentMid})` }}
-                  />
-                  {/* Gold line */}
-                  <div className="absolute top-10 left-0 right-0 h-0.5 bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400" />
-
-                  {/* Top bar content */}
-                  <div className="relative z-10 flex items-center gap-2 px-3.5 pt-2.5 pb-2">
-                    <div className="w-6 h-6 rounded-full bg-white/20 border border-white/40 overflow-hidden flex items-center justify-center shrink-0">
-                      <img
-                        src={settings.logo_url || 'https://lh3.googleusercontent.com/d/1TsAyUBmWgRpU18qwOxLlmKvI-HL1kRvt'}
-                        alt="Logo"
-                        className="w-full h-full object-contain"
-                        crossOrigin="anonymous"
-                      />
-                    </div>
-                    <div className="text-[8px] font-extrabold text-white uppercase tracking-wide">
-                      Tata Tertib Anggota Perpustakaan
-                    </div>
-                  </div>
-
-                  {/* Rules */}
-                  <div className="relative z-10 px-3.5 pt-2 space-y-[3.5px]">
-                    {[
-                      'Wajib membawa kartu anggota saat berkunjung & meminjam buku.',
-                      'Dilarang merusak, mencoret, atau merobek halaman buku.',
-                      'Batas peminjaman maksimal 7 (tujuh) hari kerja.',
-                      'Keterlambatan dikenakan denda sesuai ketentuan perpustakaan.',
-                      'Kartu tidak boleh dipindahtangankan kepada orang lain.',
-                    ].map((rule, i) => (
-                      <div key={i} className="flex gap-1.5 items-start">
-                        <span
-                          className="text-[7.5px] font-extrabold w-3 shrink-0 leading-tight"
-                          style={{ color: accentMid }}
-                        >
-                          {i + 1}.
-                        </span>
-                        <span className="text-[7.5px] text-slate-700 leading-tight">{rule}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Footer */}
-                  <div className="absolute bottom-0 left-0 right-0 flex items-end justify-between px-3.5 pb-2 pt-1 border-t border-slate-100">
-                    {/* Barcode */}
-                    <div>
-                      <div className="text-[6.5px] font-extrabold uppercase tracking-wider mb-0.5" style={{ color: accentMid }}>
-                        ID Anggota
-                      </div>
-                      <div className="flex gap-px items-end h-5">
-                        {barcodeWidths.map((w, i) => (
-                          <div
-                            key={i}
-                            style={{ width: `${w * 1.5}px`, height: `${60 + (i % 3) * 15}%`, background: accentFrom }}
-                          />
-                        ))}
-                      </div>
-                      <div className="text-[7px] font-mono font-extrabold mt-0.5" style={{ color: accentFrom }}>
-                        *{member.member_number}*
-                      </div>
-                    </div>
-
-                    {/* Signature */}
-                    <div className="text-right">
-                      <div className="text-[7px] text-slate-400 font-semibold">{settings.address?.split(',')[0] || 'Tasikmalaya'}, {new Date().getFullYear()}</div>
-                      <div className="text-[7px] font-bold text-slate-600">Kepala Perpustakaan,</div>
-                      <div className="h-4 my-0.5 flex justify-end items-center">
-                        <span className="italic font-serif text-[9px] font-bold" style={{ color: accentMid }}>
-                          {(settings.head_librarian || 'Zainul Muttaqin').split(',')[0]}
-                        </span>
-                      </div>
-                      <div
-                        className="text-[7px] font-extrabold border-t pt-0.5"
-                        style={{ borderColor: accentLight, color: accentText }}
-                      >
-                        {settings.head_librarian || 'Zainul Muttaqin, S.Pd.I.'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Decorative subtle circle */}
-                  <div
-                    className="absolute bottom-6 left-1/2 -translate-x-1/2 w-20 h-20 rounded-full opacity-[0.04]"
-                    style={{ background: accentFrom }}
-                  />
-                </div>
+              <div
+                ref={cardBackRef}
+                id="printable-member-card-back"
+                className="w-[224px] h-[356px] rounded-xl overflow-hidden relative shadow-2xl shrink-0 select-none bg-white"
+                style={{ aspectRatio: '53.98/85.6' }}
+              >
+                <img src="/assets/card-back.png" alt="Card Back Background" className="w-full h-full object-cover" crossOrigin="anonymous" />
               </div>
+            </div>
           </div>
         </div>
 
