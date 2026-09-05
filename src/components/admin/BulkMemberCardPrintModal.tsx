@@ -55,6 +55,10 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
         });
         const qrUrl = qrDataUrls[idx];
         const photoUrl = member.photo_url || 'https://via.placeholder.com/150';
+        const nisNisnStr = member.nis || member.nisn ? [member.nis, member.nisn].filter(Boolean).join(' / ') : member.member_number;
+        const placeStr = member.place_of_birth || 'TASIKMALAYA';
+        const dateBirthStr = member.date_of_birth ? new Date(member.date_of_birth).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'}) : dateStr;
+        const regionStr = member.subdistrict || member.city ? [member.subdistrict, member.city].filter(Boolean).join(' - ') : member.class_or_position;
 
         return `
           <div class="card card-front">
@@ -65,9 +69,9 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
               </div>
               <div class="details">
                 <div class="name">${member.name}</div>
-                <div class="number">${member.member_number}</div>
-                <div class="date">TASIKMALAYA, ${dateStr}</div>
-                <div class="position">${member.class_or_position}</div>
+                <div class="number">${nisNisnStr}</div>
+                <div class="date">${placeStr}, ${dateBirthStr}</div>
+                <div class="position">${regionStr}</div>
               </div>
               <div class="qr-box">
                 <img src="${qrUrl}" alt="QR" />
@@ -334,11 +338,11 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
               </div>
               <div className="mt-5 text-center w-full px-2 flex flex-col items-center">
                 <div className="font-extrabold text-[12px] uppercase tracking-wide leading-tight text-[#266b44]">{member.name}</div>
-                <div className="text-[9px] font-bold text-[#3a835a] mt-1 tracking-wider">{member.member_number}</div>
+                <div className="text-[9px] font-bold text-[#3a835a] mt-1 tracking-wider">{member.nis || member.nisn ? [member.nis, member.nisn].filter(Boolean).join(' / ') : member.member_number}</div>
                 <div className="text-[7px] font-bold text-[#3a835a] mt-1.5 uppercase">
-                  TASIKMALAYA, {new Date(member.registered_at).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'})}
+                  {member.place_of_birth || 'TASIKMALAYA'}, {member.date_of_birth ? new Date(member.date_of_birth).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'}) : new Date(member.registered_at).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}
                 </div>
-                <div className="text-[7px] font-bold text-[#3a835a] mt-0.5 uppercase">{member.class_or_position}</div>
+                <div className="text-[7px] font-bold text-[#3a835a] mt-0.5 uppercase">{member.subdistrict || member.city ? [member.subdistrict, member.city].filter(Boolean).join(' - ') : member.class_or_position}</div>
               </div>
               <div className="absolute bottom-[20px] left-1/2 -translate-x-1/2 bg-white p-1 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center">
                 <div className="bg-white rounded shadow-sm flex items-center justify-center p-0.5">

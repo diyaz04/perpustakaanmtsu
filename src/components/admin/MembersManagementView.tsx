@@ -52,7 +52,13 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
   const handleExportExcel = () => {
     const dataToExport = members.map((m) => ({
       'No. Anggota': m.member_number,
+      'NIS': m.nis || '',
+      'NISN': m.nisn || '',
       'Nama Lengkap': m.name,
+      'Tempat Lahir': m.place_of_birth || '',
+      'Tanggal Lahir': m.date_of_birth || '',
+      'Kecamatan': m.subdistrict || '',
+      'Kab/Ko': m.city || '',
       'Tipe': m.role === 'siswa' ? 'Siswa' : 'Guru',
       'Kelas/Jabatan': m.class_or_position,
       'Jenis Kelamin': m.gender,
@@ -71,7 +77,13 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
     const templateData = [
       {
         'No. Anggota': '20260001',
+        'NIS': '12345',
+        'NISN': '0098765432',
         'Nama Lengkap': 'Ahmad Fauzi',
+        'Tempat Lahir': 'Bandung',
+        'Tanggal Lahir': '2008-05-12',
+        'Kecamatan': 'Cimenyan',
+        'Kab/Ko': 'Bandung',
         'Tipe': 'Siswa',
         'Kelas/Jabatan': 'Kelas 7A',
         'Jenis Kelamin': 'L',
@@ -80,7 +92,13 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
       },
       {
         'No. Anggota': '19850312201001',
+        'NIS': '',
+        'NISN': '',
         'Nama Lengkap': 'Siti Rahmawati, S.Pd.',
+        'Tempat Lahir': 'Jakarta',
+        'Tanggal Lahir': '1985-03-12',
+        'Kecamatan': 'Kebayoran Baru',
+        'Kab/Ko': 'Jakarta Selatan',
         'Tipe': 'Guru',
         'Kelas/Jabatan': 'Wali Kelas 9B',
         'Jenis Kelamin': 'P',
@@ -116,10 +134,16 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
         }
 
         const parsedMembers = rawData.map((row: any) => {
-          const mNumber = String(row['No. Anggota'] || row['Nomor'] || row['NIS'] || row['NIP'] || `MEM-${Math.floor(1000 + Math.random() * 9000)}`);
+          const mNumber = String(row['No. Anggota'] || row['Nomor'] || row['NIP'] || `MEM-${Math.floor(1000 + Math.random() * 9000)}`);
+          const mNis = String(row['NIS'] || '');
+          const mNisn = String(row['NISN'] || '');
           const mName = String(row['Nama Lengkap'] || row['Nama'] || 'Anggota Tanpa Nama');
+          const mPlaceOfBirth = String(row['Tempat Lahir'] || '');
+          const mDateOfBirth = String(row['Tanggal Lahir'] || '');
+          const mSubdistrict = String(row['Kecamatan'] || '');
+          const mCity = String(row['Kab/Kota'] || row['Kab/Ko'] || '');
           const mTypeRaw = String(row['Tipe'] || row['Kategori'] || row['Peran'] || 'Siswa').toLowerCase();
-          const mRole: 'siswa' | 'guru' = mTypeRaw.includes('guru') || mTypeRaw.includes('staff') || mTypeRaw.includes('staff') ? 'guru' : 'siswa';
+          const mRole: 'siswa' | 'guru' = mTypeRaw.includes('guru') || mTypeRaw.includes('staff') ? 'guru' : 'siswa';
           const mClass = String(row['Kelas/Jabatan'] || row['Kelas'] || row['Jabatan'] || 'Umum');
           const mGenderRaw = String(row['Jenis Kelamin'] || row['Gender'] || 'L').toUpperCase();
           const mGender: 'L' | 'P' = mGenderRaw.startsWith('P') ? 'P' : 'L';
@@ -128,7 +152,13 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
 
           return {
             member_number: mNumber,
+            nis: mNis,
+            nisn: mNisn,
             name: mName,
+            place_of_birth: mPlaceOfBirth,
+            date_of_birth: mDateOfBirth,
+            subdistrict: mSubdistrict,
+            city: mCity,
             role: mRole,
             class_or_position: mClass,
             gender: mGender,
@@ -163,6 +193,12 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
   // Form Fields
   const [name, setName] = useState('');
   const [memberNumber, setMemberNumber] = useState('');
+  const [nis, setNis] = useState('');
+  const [nisn, setNisn] = useState('');
+  const [placeOfBirth, setPlaceOfBirth] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [subdistrict, setSubdistrict] = useState('');
+  const [city, setCity] = useState('');
   const [role, setRole] = useState<'siswa' | 'guru'>('siswa');
   const [classOrPosition, setClassOrPosition] = useState('Kelas 7A');
   const [gender, setGender] = useState<'L' | 'P'>('L');
@@ -222,6 +258,12 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
     setEditingMember(null);
     setName('');
     setMemberNumber(`2026${Math.floor(1000 + Math.random() * 9000)}`);
+    setNis('');
+    setNisn('');
+    setPlaceOfBirth('');
+    setDateOfBirth('');
+    setSubdistrict('');
+    setCity('');
     setRole('siswa');
     setClassOrPosition('Kelas 7A');
     setGender('L');
@@ -235,6 +277,12 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
     setEditingMember(m);
     setName(m.name);
     setMemberNumber(m.member_number);
+    setNis(m.nis || '');
+    setNisn(m.nisn || '');
+    setPlaceOfBirth(m.place_of_birth || '');
+    setDateOfBirth(m.date_of_birth || '');
+    setSubdistrict(m.subdistrict || '');
+    setCity(m.city || '');
     setRole(m.role);
     setClassOrPosition(m.class_or_position);
     setGender(m.gender);
@@ -246,29 +294,27 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const payload = {
+      name,
+      member_number: memberNumber,
+      nis,
+      nisn,
+      place_of_birth: placeOfBirth,
+      date_of_birth: dateOfBirth,
+      subdistrict,
+      city,
+      role,
+      class_or_position: classOrPosition,
+      gender,
+      photo_url: photoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300',
+      phone,
+      email,
+    };
+
     if (editingMember) {
-      onUpdateMember({
-        ...editingMember,
-        name,
-        member_number: memberNumber,
-        role,
-        class_or_position: classOrPosition,
-        gender,
-        photo_url: photoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300',
-        phone,
-        email,
-      });
+      onUpdateMember({ ...editingMember, ...payload });
     } else {
-      onAddMember({
-        name,
-        member_number: memberNumber,
-        role,
-        class_or_position: classOrPosition,
-        gender,
-        photo_url: photoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300',
-        phone,
-        email,
-      });
+      onAddMember(payload);
     }
     setIsModalOpen(false);
   };
@@ -428,8 +474,15 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
                       </div>
                     </td>
 
-                    <td className="py-3.5 px-4 font-mono font-bold text-emerald-800">
-                      {m.member_number}
+                    <td className="py-3.5 px-4">
+                      <div className="font-mono font-bold text-emerald-800">{m.member_number}</div>
+                      {(m.nis || m.nisn) && (
+                        <div className="text-[10px] text-slate-500 font-semibold mt-0.5">
+                          {m.nis && <span>NIS: {m.nis}</span>}
+                          {m.nis && m.nisn && <span className="mx-1">•</span>}
+                          {m.nisn && <span>NISN: {m.nisn}</span>}
+                        </div>
+                      )}
                     </td>
 
                     <td className="py-3.5 px-4 space-y-0.5">
@@ -675,7 +728,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
 
                 <div>
                   <label className="block text-xs font-extrabold text-slate-700 mb-1">
-                    {role === 'guru' ? 'NIP' : 'NIS (Nomor Induk)'} *
+                    {role === 'guru' ? 'NIP' : 'ID Utama / Barcode'} *
                   </label>
                   <input
                     type="text"
@@ -684,6 +737,76 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
                     placeholder="20237001"
                     className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-mono font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs"
                     required
+                  />
+                </div>
+              </div>
+
+              {role === 'siswa' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-extrabold text-slate-700 mb-1">NIS</label>
+                    <input
+                      type="text"
+                      value={nis}
+                      onChange={(e) => setNis(e.target.value)}
+                      placeholder="Nomor Induk Siswa"
+                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-extrabold text-slate-700 mb-1">NISN</label>
+                    <input
+                      type="text"
+                      value={nisn}
+                      onChange={(e) => setNisn(e.target.value)}
+                      placeholder="Nomor Induk Siswa Nasional"
+                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-700 mb-1">Tempat Lahir</label>
+                  <input
+                    type="text"
+                    value={placeOfBirth}
+                    onChange={(e) => setPlaceOfBirth(e.target.value)}
+                    placeholder="Contoh: Bandung"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-700 mb-1">Tanggal Lahir</label>
+                  <input
+                    type="date"
+                    value={dateOfBirth}
+                    onChange={(e) => setDateOfBirth(e.target.value)}
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-700 mb-1">Kecamatan</label>
+                  <input
+                    type="text"
+                    value={subdistrict}
+                    onChange={(e) => setSubdistrict(e.target.value)}
+                    placeholder="Nama Kecamatan"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-700 mb-1">Kab / Kota</label>
+                  <input
+                    type="text"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    placeholder="Nama Kab/Kota"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 focus:bg-white transition-all shadow-3xs"
                   />
                 </div>
               </div>

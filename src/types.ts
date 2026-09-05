@@ -32,7 +32,13 @@ export interface Book {
 export interface Member {
   id: string;
   name: string;
-  member_number: string; // NIS for siswa, NIP for guru
+  member_number: string; // NIS/NIP utama untuk login/barcode
+  nis?: string;
+  nisn?: string;
+  place_of_birth?: string;
+  date_of_birth?: string;
+  subdistrict?: string;
+  city?: string;
   role: 'siswa' | 'guru';
   class_or_position: string; // e.g. "Kelas 7A", "Guru Fiqih"
   photo_url: string;
