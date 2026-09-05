@@ -250,7 +250,7 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
                   <img src={template === 'siswa' ? "/assets/card-front.png" : "/assets/card-front-perpus.png"} alt="Card Front Background" className="absolute inset-0 w-full h-full object-cover" crossOrigin="anonymous" />
                   
                   {/* Content layout */}
-                  <div className="relative z-10 h-full flex flex-col items-center pt-[100px]">
+                  <div className="relative z-10 h-full flex flex-col items-center pt-[90px]">
                     {/* Photo */}
                     <div className="w-[85px] h-[105px] rounded-xl overflow-hidden bg-white/20 shadow-md">
                       <img
@@ -263,7 +263,7 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
                     </div>
                     
                     {/* Details */}
-                    <div className="mt-5 text-center w-full px-2 flex flex-col items-center">
+                    <div className="mt-3 text-center w-full px-2 flex flex-col items-center">
                       <div className="font-extrabold text-[12px] uppercase tracking-wide leading-tight text-[#266b44]">
                         {member.name}
                       </div>
@@ -279,12 +279,12 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
                     </div>
                     
                     {/* QR Code at the bottom center */}
-                    <div className="absolute bottom-[20px] left-1/2 -translate-x-1/2 bg-white p-1 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center">
+                    <div className="absolute bottom-[10px] left-1/2 -translate-x-1/2 bg-white p-1 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center">
                       <div className="bg-white rounded shadow-sm flex items-center justify-center p-0.5">
                         {qrDataUrl ? (
-                          <img src={qrDataUrl} alt="QR Code" className="w-[45px] h-[45px] object-contain" />
+                          <img src={qrDataUrl} alt="QR Code" className="w-[32px] h-[32px] object-contain" />
                         ) : (
-                          <div className="w-[45px] h-[45px] bg-slate-100 animate-pulse" />
+                          <div className="w-[32px] h-[32px] bg-slate-100 animate-pulse" />
                         )}
                       </div>
                     </div>

@@ -132,7 +132,7 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding-top: 24mm;
+    padding-top: 22mm;
   }
 
   .photo-box {
@@ -148,7 +148,7 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
   .photo-box img { width: 100%; height: 100%; object-fit: cover; }
   
   .details {
-    margin-top: 4mm;
+    margin-top: 2.5mm;
     text-align: center;
     width: 100%;
     padding: 0 2mm;
@@ -161,7 +161,7 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
   
   .qr-box {
     position: absolute;
-    bottom: 5mm;
+    bottom: 2.5mm;
     left: 50%;
     transform: translateX(-50%);
     background: #fff;
@@ -170,7 +170,7 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
     box-shadow: 0 1px 2px rgba(0,0,0,0.1);
   }
   
-  .qr-box img { width: 11mm; height: 11mm; display: block; }
+  .qr-box img { width: 8mm; height: 8mm; display: block; }
 </style>
 </head>
 <body>
@@ -332,7 +332,7 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
             style={{ aspectRatio: '53.98/85.6' }}
           >
             <img src={template === 'siswa' ? "/assets/card-front.png" : "/assets/card-front-perpus.png"} alt="bg" className="absolute inset-0 w-full h-full object-cover" crossOrigin="anonymous" />
-            <div className="relative z-10 h-full flex flex-col items-center pt-[100px]">
+            <div className="relative z-10 h-full flex flex-col items-center pt-[90px]">
               <div className="w-[85px] h-[105px] rounded-xl overflow-hidden bg-white/20 shadow-md">
                 <img 
                   src={member.photo_url === 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300' || !member.photo_url ? '/assets/default-avatar.jpg' : member.photo_url} 
@@ -342,7 +342,7 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
                   crossOrigin="anonymous" 
                 />
               </div>
-              <div className="mt-5 text-center w-full px-2 flex flex-col items-center">
+              <div className="mt-3 text-center w-full px-2 flex flex-col items-center">
                 <div className="font-extrabold text-[12px] uppercase tracking-wide leading-tight text-[#266b44]">{member.name}</div>
                 <div className="text-[9px] font-bold text-[#3a835a] mt-1 tracking-wider">{member.nis || member.nisn ? [member.nis, member.nisn].filter(Boolean).join(' / ') : member.member_number}</div>
                 <div className="text-[7px] font-bold text-[#3a835a] mt-1.5 uppercase">
@@ -350,12 +350,12 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
                 </div>
                 <div className="text-[7px] font-bold text-[#3a835a] mt-0.5 uppercase">{member.subdistrict || member.city ? [member.subdistrict, member.city].filter(Boolean).join(' - ') : member.class_or_position}</div>
               </div>
-              <div className="absolute bottom-[20px] left-1/2 -translate-x-1/2 bg-white p-1 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center">
+              <div className="absolute bottom-[10px] left-1/2 -translate-x-1/2 bg-white p-1 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center">
                 <div className="bg-white rounded shadow-sm flex items-center justify-center p-0.5">
                   {qrDataUrls[i] ? (
-                    <img src={qrDataUrls[i]} alt="QR" className="w-[45px] h-[45px] object-contain" />
+                    <img src={qrDataUrls[i]} alt="QR" className="w-[32px] h-[32px] object-contain" />
                   ) : (
-                    <div className="w-[45px] h-[45px] bg-slate-100" />
+                    <div className="w-[32px] h-[32px] bg-slate-100" />
                   )}
                 </div>
               </div>
