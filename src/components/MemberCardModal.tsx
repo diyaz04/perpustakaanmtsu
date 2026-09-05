@@ -254,7 +254,8 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
                     {/* Photo */}
                     <div className="w-[85px] h-[105px] rounded-xl overflow-hidden bg-white/20 shadow-md">
                       <img
-                        src={member.photo_url || 'https://via.placeholder.com/150'}
+                        src={member.photo_url === 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300' || !member.photo_url ? '/assets/default-avatar.jpg' : member.photo_url}
+                        onError={(e) => { e.currentTarget.src = '/assets/default-avatar.jpg'; }}
                         alt="Foto"
                         className="w-full h-full object-cover"
                         crossOrigin="anonymous"

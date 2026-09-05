@@ -336,6 +336,21 @@ export default function App() {
     }
   };
 
+  const handleDeleteMembers = async (ids: string[]) => {
+    try {
+      for (const id of ids) {
+        await deleteMemberFromSupabase(id);
+      }
+      setAppData((prev) => ({
+        ...prev,
+        members: prev.members.filter((m) => !ids.includes(m.id)),
+      }));
+      showToast('Anggota Dihapus', `${ids.length} data anggota telah dihapus.`, 'info');
+    } catch (err: any) {
+      showToast('Gagal Hapus Database', err.message || 'Terjadi kesalahan.', 'info');
+    }
+  };
+
   const handleAddManager = async (newManager: Manager) => {
     try {
       await syncManager(newManager);
@@ -974,6 +989,7 @@ export default function App() {
               onAddMember={handleAddMember}
               onUpdateMember={handleUpdateMember}
               onDeleteMember={handleDeleteMember}
+              onDeleteMembers={handleDeleteMembers}
               onOpenMemberCard={(m) => setSelectedMemberCard(m)}
               onImportMembers={handleImportMembers}
             />

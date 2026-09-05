@@ -54,7 +54,7 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
           year: 'numeric',
         });
         const qrUrl = qrDataUrls[idx];
-        const photoUrl = member.photo_url || 'https://via.placeholder.com/150';
+        const photoUrl = member.photo_url === 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300' || !member.photo_url ? '/assets/default-avatar.jpg' : member.photo_url;
         const nisNisnStr = member.nis || member.nisn ? [member.nis, member.nisn].filter(Boolean).join(' / ') : member.member_number;
         const placeStr = member.place_of_birth || 'TASIKMALAYA';
         const dateBirthStr = member.date_of_birth ? new Date(member.date_of_birth).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'}) : dateStr;
@@ -65,7 +65,7 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
             <img class="bg-img" src="${frontImgSrc}" alt="Front" />
             <div class="card-content">
               <div class="photo-box">
-                <img src="${photoUrl}" alt="Photo" />
+                <img src="${photoUrl}" alt="Photo" onerror="this.onerror=null;this.src='/assets/default-avatar.jpg';" />
               </div>
               <div class="details">
                 <div class="name">${member.name}</div>
@@ -334,7 +334,13 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
             <img src={template === 'siswa' ? "/assets/card-front.png" : "/assets/card-front-perpus.png"} alt="bg" className="absolute inset-0 w-full h-full object-cover" crossOrigin="anonymous" />
             <div className="relative z-10 h-full flex flex-col items-center pt-[100px]">
               <div className="w-[85px] h-[105px] rounded-xl overflow-hidden bg-white/20 shadow-md">
-                <img src={member.photo_url || 'https://via.placeholder.com/150'} alt="Foto" className="w-full h-full object-cover" crossOrigin="anonymous" />
+                <img 
+                  src={member.photo_url === 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300' || !member.photo_url ? '/assets/default-avatar.jpg' : member.photo_url} 
+                  onError={(e) => { e.currentTarget.src = '/assets/default-avatar.jpg'; }}
+                  alt="Foto" 
+                  className="w-full h-full object-cover" 
+                  crossOrigin="anonymous" 
+                />
               </div>
               <div className="mt-5 text-center w-full px-2 flex flex-col items-center">
                 <div className="font-extrabold text-[12px] uppercase tracking-wide leading-tight text-[#266b44]">{member.name}</div>

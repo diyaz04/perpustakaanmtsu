@@ -30,6 +30,7 @@ interface MembersManagementViewProps {
   onAddMember: (member: Omit<Member, 'id' | 'registered_at'>) => void;
   onUpdateMember: (member: Member) => void;
   onDeleteMember: (id: string) => void;
+  onDeleteMembers?: (ids: string[]) => void;
   onOpenMemberCard: (member: Member) => void;
   onImportMembers?: (membersList: Omit<Member, 'id' | 'registered_at'>[]) => Promise<void>;
 }
@@ -41,6 +42,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
   onAddMember,
   onUpdateMember,
   onDeleteMember,
+  onDeleteMembers,
   onOpenMemberCard,
   onImportMembers,
 }) => {
@@ -162,7 +164,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
             role: mRole,
             class_or_position: mClass,
             gender: mGender,
-            photo_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300', // Default photo
+            photo_url: '/assets/default-avatar.jpg', // Default photo
             phone: mPhone,
             email: mEmail,
           };
@@ -267,7 +269,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
     setRole('siswa');
     setClassOrPosition('Kelas 7A');
     setGender('L');
-    setPhotoUrl('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300');
+    setPhotoUrl('/assets/default-avatar.jpg');
     setPhone('081234567890');
     setEmail('');
     setIsModalOpen(true);
@@ -306,7 +308,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
       role,
       class_or_position: classOrPosition,
       gender,
-      photo_url: photoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300',
+      photo_url: photoUrl || '/assets/default-avatar.jpg',
       phone,
       email,
     };
@@ -340,13 +342,27 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           {selectedIds.size > 0 && (
-            <button
-              onClick={() => setIsBulkPrintOpen(true)}
-              className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Cetak Massal ({selectedIds.size})</span>
-            </button>
+            <>
+              <button
+                onClick={() => setIsBulkPrintOpen(true)}
+                className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Cetak Massal ({selectedIds.size})</span>
+              </button>
+              <button
+                onClick={() => {
+                  if (window.confirm(`Hapus ${selectedIds.size} anggota yang dipilih secara permanen?`)) {
+                    if (onDeleteMembers) onDeleteMembers(Array.from(selectedIds));
+                    setSelectedIds(new Set());
+                  }
+                }}
+                className="px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Hapus ({selectedIds.size})</span>
+              </button>
+            </>
           )}
 
           {/* Download Template Button */}
@@ -463,7 +479,8 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-3">
                         <img
-                          src={m.photo_url}
+                          src={m.photo_url === 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300' || !m.photo_url ? '/assets/default-avatar.jpg' : m.photo_url}
+                          onError={(e) => { e.currentTarget.src = '/assets/default-avatar.jpg'; }}
                           alt={m.name}
                           className="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0"
                         />
