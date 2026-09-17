@@ -264,7 +264,7 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
                     
                     {/* Details */}
                     <div className="mt-3 text-center w-full px-2 flex flex-col items-center">
-                      <div className="font-extrabold text-[12px] uppercase tracking-wide leading-tight text-[#266b44]">
+                      <div className="font-extrabold text-[12px] uppercase tracking-wide leading-tight text-[#266b44] break-words line-clamp-2">
                         {member.name}
                       </div>
                       <div className="text-[9px] font-bold text-[#3a835a] mt-1 tracking-wider">

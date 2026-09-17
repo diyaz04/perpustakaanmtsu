@@ -152,9 +152,24 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
     text-align: center;
     width: 100%;
     padding: 0 2mm;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
   
-  .name { font-size: 8pt; font-weight: 900; color: #266b44; text-transform: uppercase; line-height: 1.1; }
+  .name { 
+    font-size: 8pt; 
+    font-weight: 900; 
+    color: #266b44; 
+    text-transform: uppercase; 
+    line-height: 1.25; 
+    word-break: break-word; 
+    letter-spacing: 0.025em;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
   .number { font-size: 6pt; font-weight: bold; color: #3a835a; margin-top: 1mm; letter-spacing: 0.5pt; }
   .date { font-size: 4.5pt; font-weight: bold; color: #3a835a; margin-top: 1.5mm; text-transform: uppercase; }
   .position { font-size: 4.5pt; font-weight: bold; color: #3a835a; margin-top: 0.5mm; text-transform: uppercase; }
@@ -343,7 +358,7 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
                 />
               </div>
               <div className="mt-3 text-center w-full px-2 flex flex-col items-center">
-                <div className="font-extrabold text-[12px] uppercase tracking-wide leading-tight text-[#266b44]">{member.name}</div>
+                <div className="font-extrabold text-[12px] uppercase tracking-wide leading-tight text-[#266b44] break-words line-clamp-2">{member.name}</div>
                 <div className="text-[9px] font-bold text-[#3a835a] mt-1 tracking-wider">{member.nis || member.nisn ? [member.nis, member.nisn].filter(Boolean).join(' / ') : member.member_number}</div>
                 <div className="text-[7px] font-bold text-[#3a835a] mt-1.5 uppercase">
                   {member.place_of_birth || 'TASIKMALAYA'}, {member.date_of_birth ? new Date(member.date_of_birth).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'}) : new Date(member.registered_at).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}
