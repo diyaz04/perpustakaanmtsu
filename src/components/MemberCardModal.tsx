@@ -263,17 +263,17 @@ export const MemberCardModal: React.FC<MemberCardModalProps> = ({
                     </div>
                     
                     {/* Details */}
-                    <div className="mt-3 text-center w-full px-2 flex flex-col items-center">
-                      <div className="font-extrabold text-[12px] uppercase tracking-wide leading-tight text-[#266b44] break-words line-clamp-2">
+                    <div className="mt-3 text-center w-full px-2 block">
+                      <div className="font-extrabold text-[12px] uppercase tracking-wide leading-tight text-[#266b44] break-words">
                         {member.name}
                       </div>
-                      <div className="text-[9px] font-bold text-[#3a835a] mt-1 tracking-wider">
+                      <div className="text-[9px] font-bold text-[#3a835a] mt-1 tracking-wider break-words leading-tight">
                         {member.nis || member.nisn ? [member.nis, member.nisn].filter(Boolean).join(' / ') : member.member_number}
                       </div>
-                      <div className="text-[7px] font-bold text-[#3a835a] mt-1.5 uppercase">
+                      <div className="text-[7px] font-bold text-[#3a835a] mt-1.5 uppercase leading-tight">
                         {member.place_of_birth || 'TASIKMALAYA'}, {member.date_of_birth ? new Date(member.date_of_birth).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'}) : new Date(member.registered_at).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}
                       </div>
-                      <div className="text-[7px] font-bold text-[#3a835a] mt-0.5 uppercase">
+                      <div className="text-[7px] font-bold text-[#3a835a] mt-0.5 uppercase leading-tight">
                         {member.subdistrict || member.city ? [member.subdistrict, member.city].filter(Boolean).join(' - ') : member.class_or_position}
                       </div>
                     </div>
