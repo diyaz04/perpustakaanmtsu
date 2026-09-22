@@ -81,28 +81,52 @@ export function updateFinesAndStatus(data: AppStorageData): AppStorageData {
   const fineRate = data.settings.fine_per_day || 1000;
 
   const updatedLoans = data.loans.map((loan) => {
-    if (loan.status === 'Dikembalikan') return loan;
+    const book = data.books.find(b => b.id === loan.book_id);
+    const member = data.members.find(m => m.id === loan.member_id);
+    
+    let updatedLoan = {
+      ...loan,
+      book_title: book?.title || 'Buku Tidak Diketahui',
+      book_isbn: book?.isbn || '-',
+      member_name: member?.name || 'Anggota Tidak Diketahui',
+      member_number: member?.member_number || '-',
+      member_class: member?.class_or_position || '-',
+    };
 
-    const dueDate = new Date(loan.due_date).getTime();
+    if (updatedLoan.status === 'Dikembalikan') return updatedLoan;
+
+    const dueDate = new Date(updatedLoan.due_date).getTime();
     if (todayDate > dueDate) {
       const diffDays = Math.ceil((todayDate - dueDate) / (1000 * 3600 * 24));
       const fine = diffDays * fineRate;
       return {
-        ...loan,
+        ...updatedLoan,
         status: 'Terlambat' as const,
         fine_amount: fine,
         notes: `Terlambat ${diffDays} hari`,
       };
     } else {
       return {
-        ...loan,
+        ...updatedLoan,
         status: 'Dipinjam' as const,
         fine_amount: 0,
       };
     }
   });
 
-  return { ...data, loans: updatedLoans };
+  const updatedReservations = data.reservations.map((res) => {
+    const book = data.books.find(b => b.id === res.book_id);
+    return {
+      ...res,
+      book_title: book?.title || res.book_title || 'Buku Tidak Diketahui',
+    };
+  });
+
+  return {
+    ...data,
+    loans: updatedLoans,
+    reservations: updatedReservations,
+  };
 }
 
 // Reset data to defaults
