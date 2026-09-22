@@ -85,35 +85,35 @@ export const BulkQRPrintModal: React.FC<BulkQRPrintModalProps> = ({
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Arial', sans-serif; background: #fff; }
   
-  /* Container diset untuk 3 kolom */
+  /* Container diset untuk 2 kolom */
   .grid {
     display: grid;
-    grid-template-columns: repeat(3, 64mm);
+    grid-template-columns: repeat(2, 95mm);
     gap: 2mm;
-    padding: 5mm; /* Margin tepi kertas */
+    padding: 5mm;
     justify-content: center;
   }
   
-  /* Ukuran presisi Label 103 (64x32mm) atau disesuaikan untuk layout A4 */
+  /* Ukuran presisi Label disesuaikan untuk layout A4 2x6 */
   .qr-card {
-    width: 64mm;
-    height: 32mm;
-    border: 1px solid #cbd5e1; /* Kotak border yang bagus dan terlihat */
-    border-radius: 6px;
-    padding: 3mm;
+    width: 95mm;
+    height: 45mm;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 4mm;
     background: #fff;
     display: flex;
     align-items: center;
-    gap: 2mm;
+    gap: 3mm;
     overflow: hidden;
     break-inside: avoid;
     page-break-inside: avoid;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05); /* Sedikit shadow agar lebih elegan */
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
   }
   
   .qr-img {
-    width: 26mm;
-    height: 26mm;
+    width: 36mm;
+    height: 36mm;
     object-fit: contain;
     flex-shrink: 0;
   }
@@ -127,22 +127,22 @@ export const BulkQRPrintModal: React.FC<BulkQRPrintModalProps> = ({
   }
   
   .qr-header {
-    font-size: 7px;
+    font-size: 10px;
     font-weight: 900;
     color: #065f46;
     text-transform: uppercase;
-    margin-bottom: 2px;
+    margin-bottom: 3px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   
   .qr-title {
-    font-size: 7px;
+    font-size: 10px;
     font-weight: 700;
     color: #1e293b;
-    line-height: 1.2;
-    margin-bottom: 2px;
+    line-height: 1.3;
+    margin-bottom: 3px;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
@@ -150,18 +150,18 @@ export const BulkQRPrintModal: React.FC<BulkQRPrintModalProps> = ({
   }
   
   .qr-sub {
-    font-size: 6px;
+    font-size: 9px;
     color: #64748b;
     font-family: monospace;
-    margin-bottom: 2px;
+    margin-bottom: 3px;
   }
   
   .qr-copy {
-    font-size: 6px;
+    font-size: 9px;
     color: #059669;
     font-weight: 700;
     border-top: 1px dashed #a7f3d0;
-    padding-top: 2px;
+    padding-top: 3px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
