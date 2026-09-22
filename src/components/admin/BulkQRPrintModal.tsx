@@ -94,12 +94,12 @@ export const BulkQRPrintModal: React.FC<BulkQRPrintModalProps> = ({
     justify-content: center;
   }
   
-  /* Ukuran presisi Label 103 (64x32mm) */
+  /* Ukuran presisi Label 103 (64x32mm) atau disesuaikan untuk layout A4 */
   .qr-card {
     width: 64mm;
     height: 32mm;
-    border: 1px dashed #ccc; /* Garis potong bantu, hilangkan jika tidak perlu */
-    border-radius: 4px;
+    border: 1px solid #cbd5e1; /* Kotak border yang bagus dan terlihat */
+    border-radius: 6px;
     padding: 3mm;
     background: #fff;
     display: flex;
@@ -108,6 +108,7 @@ export const BulkQRPrintModal: React.FC<BulkQRPrintModalProps> = ({
     overflow: hidden;
     break-inside: avoid;
     page-break-inside: avoid;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05); /* Sedikit shadow agar lebih elegan */
   }
   
   .qr-img {
@@ -159,16 +160,25 @@ export const BulkQRPrintModal: React.FC<BulkQRPrintModalProps> = ({
     font-size: 6px;
     color: #059669;
     font-weight: 700;
-    border-top: 1px solid #a7f3d0;
+    border-top: 1px dashed #a7f3d0;
     padding-top: 2px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   
+  @page {
+    size: A4 portrait;
+    margin: 7mm;
+  }
+  
   @media print {
-    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .qr-card { border: none; } /* Hilangkan border saat benar-benar dicetak di label */
+    body { 
+      -webkit-print-color-adjust: exact; 
+      print-color-adjust: exact; 
+    }
+    /* Memastikan margin 0 pada container agar mengandalkan @page margin */
+    .grid { padding: 0; }
   }
 </style>
 </head>
