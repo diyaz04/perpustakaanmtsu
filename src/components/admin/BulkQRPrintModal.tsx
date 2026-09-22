@@ -68,9 +68,9 @@ export const BulkQRPrintModal: React.FC<BulkQRPrintModalProps> = ({
           <img class="qr-img" src="${qrDataUrls[idx]}" alt="QR" />
           <div class="qr-info">
             <div class="qr-header">${libraryName}</div>
-            <div class="qr-title">${book.title.length > 25 ? book.title.slice(0, 23) + '…' : book.title}</div>
+            <div class="qr-title">${book.title}</div>
             <div class="qr-sub">${book.isbn}</div>
-            <div class="qr-copy">Eks. ${copyIndex}/${book.stock} • ${book.shelf_location.length > 10 ? book.shelf_location.slice(0,10)+'…' : book.shelf_location}</div>
+            <div class="qr-copy">Eks. ${copyIndex}/${book.stock} • ${book.shelf_location}</div>
           </div>
         </div>`
       )
@@ -127,14 +127,16 @@ export const BulkQRPrintModal: React.FC<BulkQRPrintModalProps> = ({
   }
   
   .qr-header {
-    font-size: 10px;
+    font-size: 13px;
     font-weight: 900;
     color: #065f46;
     text-transform: uppercase;
-    margin-bottom: 3px;
-    white-space: nowrap;
+    line-height: 1.2;
+    margin-bottom: 4px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
-    text-overflow: ellipsis;
   }
   
   .qr-title {
@@ -162,9 +164,8 @@ export const BulkQRPrintModal: React.FC<BulkQRPrintModalProps> = ({
     font-weight: 700;
     border-top: 1px dashed #a7f3d0;
     padding-top: 3px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    line-height: 1.2;
+    word-break: break-word;
   }
   
   @page {
