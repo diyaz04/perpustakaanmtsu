@@ -210,7 +210,7 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const filteredMembers = useMemo(() => {
     return members.filter((m) => {
@@ -573,9 +573,28 @@ export const MembersManagementView: React.FC<MembersManagementViewProps> = ({
         </div>
 
         {/* Pagination */}
-        <div className="bg-slate-50 px-4 py-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-          <div>
-            Halaman {currentPage} dari {totalPages} ({filteredMembers.length} Anggota)
+        <div className="bg-slate-50 px-4 py-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+          <div className="flex items-center gap-3">
+            <span>
+              Halaman {currentPage} dari {totalPages} ({filteredMembers.length} Anggota)
+            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-500 font-semibold">Tampilkan:</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span className="text-slate-400">per halaman</span>
+            </div>
           </div>
           <div className="flex gap-1">
             <button
