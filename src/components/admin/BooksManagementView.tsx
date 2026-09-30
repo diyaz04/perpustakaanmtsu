@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Book, BookCategory, LibrarySettings } from '../../types';
 import { ImageUploader } from '../ImageUploader';
 import { BulkQRPrintModal } from './BulkQRPrintModal';
+import { exportBooksToExcel, exportBooksToPDF } from '../../lib/exportUtils';
 import {
   Plus,
   Search,
@@ -17,6 +18,10 @@ import {
   Printer,
   CheckSquare,
   Square,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  ChevronDown,
 } from 'lucide-react';
 
 interface BooksManagementViewProps {
@@ -45,6 +50,7 @@ export const BooksManagementView: React.FC<BooksManagementViewProps> = ({
   const [editingBook, setEditingBook] = useState<Book | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkPrintOpen, setIsBulkPrintOpen] = useState(false);
+  const [isExportOpen, setIsExportOpen] = useState(false);
 
   // Form Fields
   const [title, setTitle] = useState('');
@@ -126,6 +132,24 @@ export const BooksManagementView: React.FC<BooksManagementViewProps> = ({
     const printed = b.qr_printed_count || 0;
     return s + Math.max(0, b.stock - printed);
   }, 0);
+
+  // Export data koleksi (tanpa foto sampul) — ikut filter/pencarian yang aktif
+  const buildExportSubtitle = () => {
+    const parts: string[] = [];
+    if (selectedCategory !== 'Semua') parts.push(`Kategori: ${selectedCategory}`);
+    if (searchTerm.trim()) parts.push(`Pencarian: "${searchTerm.trim()}"`);
+    return parts.join(' | ');
+  };
+
+  const handleExportExcel = () => {
+    exportBooksToExcel(filteredBooks, settings);
+    setIsExportOpen(false);
+  };
+
+  const handleExportPDF = () => {
+    exportBooksToPDF(filteredBooks, settings, undefined, buildExportSubtitle());
+    setIsExportOpen(false);
+  };
 
   const openAddModal = () => {
     setEditingBook(null);
@@ -228,6 +252,42 @@ export const BooksManagementView: React.FC<BooksManagementViewProps> = ({
               <span>Cetak QR ({totalQrToPrint} lembar)</span>
             </button>
           )}
+          {/* Export Data (tanpa sampul) */}
+          <div className="relative">
+            <button
+              onClick={() => setIsExportOpen((v) => !v)}
+              disabled={filteredBooks.length === 0}
+              className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-semibold text-xs rounded-xl shadow-2xs flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download className="w-4 h-4 text-emerald-600" />
+              <span>Export Data</span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            </button>
+            {isExportOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setIsExportOpen(false)} />
+                <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-lg z-20 overflow-hidden">
+                  <div className="px-3.5 py-2 text-[10px] font-bold uppercase text-slate-400 border-b border-slate-100">
+                    {filteredBooks.length} judul (sesuai filter)
+                  </div>
+                  <button
+                    onClick={handleExportExcel}
+                    className="w-full px-3.5 py-2.5 flex items-center gap-2.5 text-xs font-semibold text-slate-700 hover:bg-emerald-50 cursor-pointer text-left"
+                  >
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                    Export ke Excel (.xlsx)
+                  </button>
+                  <button
+                    onClick={handleExportPDF}
+                    className="w-full px-3.5 py-2.5 flex items-center gap-2.5 text-xs font-semibold text-slate-700 hover:bg-red-50 cursor-pointer text-left"
+                  >
+                    <FileText className="w-4 h-4 text-red-500" />
+                    Export ke PDF
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
           <button
             onClick={openAddModal}
             className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white font-semibold text-xs rounded-xl shadow-xs flex items-center gap-2 shrink-0 cursor-pointer"
