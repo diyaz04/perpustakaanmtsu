@@ -11,12 +11,20 @@ const CARD_H = 85.6;
 type PaperKey = 'a4' | 'f4';
 const PAPERS: Record<PaperKey, { label: string; w: number; h: number }> = {
   a4: { label: 'A4 (210 x 297 mm)', w: 210, h: 297 },
-  f4: { label: 'F4 / Folio (215 x 330 mm)', w: 215, h: 330 },
+  f4: { label: 'F4 (210 x 330 mm)', w: 210, h: 330 },
 };
-const COLS = 3;
-const ROWS = 3;
 const GAP = 4;
-const PER_SHEET = COLS * ROWS;
+const SAFE_MARGIN = 5; // mm, area aman printer
+
+// Jumlah kolom/baris menyesuaikan skala supaya kartu tidak keluar dari kertas
+const gridFor = (cal: Calibration) => {
+  const w = CARD_W * cal.scale;
+  const h = CARD_H * cal.scale;
+  const paper = PAPERS[cal.paper];
+  const cols = Math.max(1, Math.floor((paper.w - 2 * SAFE_MARGIN + GAP) / (w + GAP)));
+  const rows = Math.max(1, Math.floor((paper.h - 2 * SAFE_MARGIN + GAP) / (h + GAP)));
+  return { cols, rows, perSheet: cols * rows, w, h };
+};
 
 // Kalibrasi printer: scale (1 = 100%) membesarkan/mengecilkan kartu, dx/dy (mm)
 // menggeser sisi belakang (dx + = kanan, dy + = bawah).
@@ -40,13 +48,12 @@ const loadCalibration = (): Calibration => {
 // Posisi slot (mm). Sisi belakang dicerminkan horizontal supaya pas dengan
 // depannya saat dicetak bolak-balik (flip on long edge).
 const slotPos = (slot: number, mirror: boolean, cal: Calibration) => {
-  const w = CARD_W * cal.scale;
-  const h = CARD_H * cal.scale;
-  const gridX = (PAPERS[cal.paper].w - (COLS * w + (COLS - 1) * GAP)) / 2;
-  const gridY = (PAPERS[cal.paper].h - (ROWS * h + (ROWS - 1) * GAP)) / 2;
-  const row = Math.floor(slot / COLS);
-  const col = slot % COLS;
-  const c = mirror ? COLS - 1 - col : col;
+  const { cols, rows, w, h } = gridFor(cal);
+  const gridX = (PAPERS[cal.paper].w - (cols * w + (cols - 1) * GAP)) / 2;
+  const gridY = (PAPERS[cal.paper].h - (rows * h + (rows - 1) * GAP)) / 2;
+  const row = Math.floor(slot / cols);
+  const col = slot % cols;
+  const c = mirror ? cols - 1 - col : col;
   return {
     x: gridX + c * (w + GAP) + (mirror ? cal.dx : 0),
     y: gridY + row * (h + GAP) + (mirror ? cal.dy : 0),
@@ -81,6 +88,7 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
   }, [calibration]);
 
   const setCal = (patch: Partial<Calibration>) => setCalibration((c) => ({ ...c, ...patch }));
+  const grid = gridFor(calibration);
   const backCardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -154,8 +162,8 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
         const { x, y } = slotPos(slot, mirror, calibration);
         return `left:${x}mm;top:${y}mm;transform:scale(${calibration.scale});transform-origin:0 0;`;
       };
-      for (let start = 0; start < frontCards.length; start += PER_SHEET) {
-        const chunk = frontCards.slice(start, start + PER_SHEET);
+      for (let start = 0; start < frontCards.length; start += grid.perSheet) {
+        const chunk = frontCards.slice(start, start + grid.perSheet);
         bodyHtml += `<div class="sheet">${chunk.map((f, i) => f(pos(i, false))).join('')}</div>`;
         bodyHtml += `<div class="sheet">${chunk.map((_, i) => backCardHtml(pos(i, true))).join('')}</div>`;
       }
@@ -322,8 +330,8 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
           const el = cardsRef.current[i];
           if (el) fronts.push(await toPng(el, { pixelRatio: 4, cacheBust: true }));
         }
-        for (let start = 0; start < fronts.length; start += PER_SHEET) {
-          const chunk = fronts.slice(start, start + PER_SHEET);
+        for (let start = 0; start < fronts.length; start += grid.perSheet) {
+          const chunk = fronts.slice(start, start + grid.perSheet);
           if (start > 0) pdf.addPage([PAPERS[calibration.paper].w, PAPERS[calibration.paper].h], 'portrait');
           chunk.forEach((img, i) => {
             const { x, y, w, h } = slotPos(i, false, calibration);
@@ -377,7 +385,7 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
               <h3 className="font-extrabold text-slate-900 text-sm">Cetak Massal Kartu Anggota</h3>
               <p className="text-[10px] text-slate-400 font-bold mt-0.5">
                 {template === 'perpus'
-                  ? `Mencetak ${selectedMembers.length} kartu di ${PAPERS[calibration.paper].label.split(' ')[0]} (${Math.ceil(selectedMembers.length / PER_SHEET) * 2} halaman, bolak-balik)`
+                  ? `Mencetak ${selectedMembers.length} kartu di ${PAPERS[calibration.paper].label.split(' ')[0]} (${Math.ceil(selectedMembers.length / grid.perSheet) * 2} halaman, bolak-balik)`
                   : `Mencetak ${selectedMembers.length} bagian depan dan 1 bagian belakang`}
               </p>
             </div>
@@ -460,7 +468,7 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
               </div>
               <div className="text-emerald-700 font-semibold mt-0.5">
                 {template === 'perpus'
-                  ? `${PER_SHEET} kartu per lembar ${PAPERS[calibration.paper].label.split(' ')[0]}: lembar depan lalu lembar belakang`
+                  ? `${grid.perSheet} kartu per lembar ${PAPERS[calibration.paper].label.split(' ')[0]}: lembar depan lalu lembar belakang`
                   : `Bagian depan (${selectedMembers.length} lbr) + Bagian belakang (1 lbr)`}
               </div>
             </div>
@@ -470,7 +478,7 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-blue-400" />
             <span>
               {template === 'perpus'
-                ? `Layout ${PAPERS[calibration.paper].label.split(' ')[0]} 3x3 (9 kartu/lembar), tiap kartu ukuran KTP 53.98mm x 85.6mm. Urutan halaman: depan, belakang, depan, belakang. Cetak skala 100% (Actual size), pilih "Print on both sides / Cetak dua sisi" dengan flip on long edge. Posisi belakang sudah dicerminkan agar pas dengan depannya.`
+                ? `Layout ${PAPERS[calibration.paper].label.split(' ')[0]} ${grid.cols}x${grid.rows} (${grid.perSheet} kartu/lembar), tiap kartu ukuran KTP 53.98mm x 85.6mm. Urutan halaman: depan, belakang, depan, belakang. Cetak skala 100% (Actual size), pilih "Print on both sides / Cetak dua sisi" dengan flip on long edge. Posisi belakang sudah dicerminkan agar pas dengan depannya.`
                 : 'Cetak massal akan di-generate dalam bentuk file PDF full satu halaman penuh per satu orang anggota (ukuran 53.98mm x 85.6mm). Sisi belakang kartu hanya akan di-generate 1 kali di halaman paling akhir.'}
             </span>
           </div>
