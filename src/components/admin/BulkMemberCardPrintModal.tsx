@@ -185,15 +185,14 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
 
   .sheet {
     width: ${PAPERS[calibration.paper].w}mm;
-    height: ${PAPERS[calibration.paper].h}mm;
+    /* sedikit lebih pendek dari kertas supaya pembulatan browser tidak memunculkan halaman kosong */
+    height: ${PAPERS[calibration.paper].h - 1}mm;
     position: relative;
     overflow: hidden;
-    page-break-after: always;
-    break-after: page;
   }
-  .sheet:last-child {
-    page-break-after: auto;
-    break-after: auto;
+  .sheet + .sheet {
+    page-break-before: always;
+    break-before: page;
   }
   .sheet .card {
     position: absolute;
