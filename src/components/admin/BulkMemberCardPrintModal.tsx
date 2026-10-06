@@ -187,7 +187,8 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
   
   /* ISO ID-1 Size */
   @page {
-    size: ${isDuplex ? `${PAPERS[calibration.paper].w}mm ${PAPERS[calibration.paper].h}mm portrait` : '53.98mm 85.6mm portrait'};
+    /* ukuran eksplisit tidak boleh digabung dengan 'portrait', kalau digabung @page diabaikan browser */
+    size: ${isDuplex ? `${PAPERS[calibration.paper].w}mm ${PAPERS[calibration.paper].h}mm` : '53.98mm 85.6mm'};
     margin: 0;
   }
 
