@@ -14,16 +14,41 @@ const COLS = 3;
 const ROWS = 3;
 const GAP = 4;
 const PER_SHEET = COLS * ROWS;
-const GRID_X = (A4_W - (COLS * CARD_W + (COLS - 1) * GAP)) / 2;
-const GRID_Y = (A4_H - (ROWS * CARD_H + (ROWS - 1) * GAP)) / 2;
+
+// Kalibrasi printer: scale (1 = 100%) membesarkan/mengecilkan kartu, dx/dy (mm)
+// menggeser sisi belakang (dx + = kanan, dy + = bawah).
+interface Calibration {
+  scale: number;
+  dx: number;
+  dy: number;
+}
+const DEFAULT_CALIBRATION: Calibration = { scale: 1, dx: 0, dy: 0 };
+const CALIBRATION_KEY = 'perpus_card_print_calibration';
+
+const loadCalibration = (): Calibration => {
+  try {
+    const raw = localStorage.getItem(CALIBRATION_KEY);
+    if (raw) return { ...DEFAULT_CALIBRATION, ...JSON.parse(raw) };
+  } catch {}
+  return DEFAULT_CALIBRATION;
+};
 
 // Posisi slot (mm). Sisi belakang dicerminkan horizontal supaya pas dengan
 // depannya saat dicetak bolak-balik (flip on long edge).
-const slotPos = (slot: number, mirror: boolean) => {
+const slotPos = (slot: number, mirror: boolean, cal: Calibration) => {
+  const w = CARD_W * cal.scale;
+  const h = CARD_H * cal.scale;
+  const gridX = (A4_W - (COLS * w + (COLS - 1) * GAP)) / 2;
+  const gridY = (A4_H - (ROWS * h + (ROWS - 1) * GAP)) / 2;
   const row = Math.floor(slot / COLS);
   const col = slot % COLS;
   const c = mirror ? COLS - 1 - col : col;
-  return { x: GRID_X + c * (CARD_W + GAP), y: GRID_Y + row * (CARD_H + GAP) };
+  return {
+    x: gridX + c * (w + GAP) + (mirror ? cal.dx : 0),
+    y: gridY + row * (h + GAP) + (mirror ? cal.dy : 0),
+    w,
+    h,
+  };
 };
 
 interface BulkMemberCardPrintModalProps {
@@ -42,7 +67,16 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
   const [qrDataUrls, setQrDataUrls] = useState<string[]>([]);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
+  const [calibration, setCalibration] = useState<Calibration>(loadCalibration);
   const cardsRef = useRef<(HTMLDivElement | null)[]>([]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CALIBRATION_KEY, JSON.stringify(calibration));
+    } catch {}
+  }, [calibration]);
+
+  const setCal = (patch: Partial<Calibration>) => setCalibration((c) => ({ ...c, ...patch }));
   const backCardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -113,8 +147,8 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
     if (isDuplex) {
       // A4: lembar depan, lembar belakang (dicerminkan), dst
       const pos = (slot: number, mirror: boolean) => {
-        const { x, y } = slotPos(slot, mirror);
-        return `left:${x}mm;top:${y}mm;`;
+        const { x, y } = slotPos(slot, mirror, calibration);
+        return `left:${x}mm;top:${y}mm;transform:scale(${calibration.scale});transform-origin:0 0;`;
       };
       for (let start = 0; start < frontCards.length; start += PER_SHEET) {
         const chunk = frontCards.slice(start, start + PER_SHEET);
@@ -289,14 +323,14 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
           const chunk = fronts.slice(start, start + PER_SHEET);
           if (start > 0) pdf.addPage('a4', 'portrait');
           chunk.forEach((img, i) => {
-            const { x, y } = slotPos(i, false);
-            pdf.addImage(img, 'PNG', x, y, cardW, cardH);
+            const { x, y, w, h } = slotPos(i, false, calibration);
+            pdf.addImage(img, 'PNG', x, y, w, h);
           });
           pdf.addPage('a4', 'portrait');
           if (backDataUrl) {
             chunk.forEach((_, i) => {
-              const { x, y } = slotPos(i, true);
-              pdf.addImage(backDataUrl, 'PNG', x, y, cardW, cardH);
+              const { x, y, w, h } = slotPos(i, true, calibration);
+              pdf.addImage(backDataUrl, 'PNG', x, y, w, h);
             });
           }
         }
@@ -363,6 +397,42 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
               <option value="perpus">Template Kartu Tanda Perpustakaan</option>
             </select>
           </div>
+
+          {template === 'perpus' && (
+            <div className="p-3 border border-slate-200 rounded-2xl space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-extrabold text-slate-700">Kalibrasi Printer</span>
+                <button
+                  type="button"
+                  onClick={() => setCalibration(DEFAULT_CALIBRATION)}
+                  className="text-[10px] font-extrabold text-slate-400 hover:text-slate-700 cursor-pointer"
+                >
+                  Reset
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { label: 'Skala (%)', value: Math.round(calibration.scale * 1000) / 10, step: 0.5, onChange: (v: number) => setCal({ scale: Math.min(1.2, Math.max(0.8, v / 100)) }) },
+                  { label: 'Belakang geser X (mm)', value: calibration.dx, step: 0.5, onChange: (v: number) => setCal({ dx: v }) },
+                  { label: 'Belakang geser Y (mm)', value: calibration.dy, step: 0.5, onChange: (v: number) => setCal({ dy: v }) },
+                ]).map((f) => (
+                  <label key={f.label} className="block text-[10px] font-bold text-slate-500">
+                    {f.label}
+                    <input
+                      type="number"
+                      step={f.step}
+                      value={f.value}
+                      onChange={(e) => f.onChange(parseFloat(e.target.value) || 0)}
+                      className="mt-1 w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </label>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-400 font-semibold">
+                Ukur kartu hasil cetak. Kalau lebih kecil dari 85.6 mm, naikkan skala (mis. 85.6 / ukuran terukur × 100). Belakang terlalu atas: isi Y positif. Tersimpan otomatis di browser ini.
+              </p>
+            </div>
+          )}
 
           <div className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-100 rounded-2xl">
             <CreditCard className="w-5 h-5 text-emerald-600 shrink-0" />
