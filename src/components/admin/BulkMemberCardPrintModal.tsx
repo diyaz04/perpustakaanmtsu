@@ -8,8 +8,11 @@ import QRCode from 'qrcode';
 // Layout A4 (template perpus): kartu ukuran KTP, 3 kolom x 3 baris = 9 kartu / lembar
 const CARD_W = 53.98;
 const CARD_H = 85.6;
-const A4_W = 210;
-const A4_H = 297;
+type PaperKey = 'a4' | 'f4';
+const PAPERS: Record<PaperKey, { label: string; w: number; h: number }> = {
+  a4: { label: 'A4 (210 x 297 mm)', w: 210, h: 297 },
+  f4: { label: 'F4 / Folio (215 x 330 mm)', w: 215, h: 330 },
+};
 const COLS = 3;
 const ROWS = 3;
 const GAP = 4;
@@ -18,11 +21,12 @@ const PER_SHEET = COLS * ROWS;
 // Kalibrasi printer: scale (1 = 100%) membesarkan/mengecilkan kartu, dx/dy (mm)
 // menggeser sisi belakang (dx + = kanan, dy + = bawah).
 interface Calibration {
+  paper: PaperKey;
   scale: number;
   dx: number;
   dy: number;
 }
-const DEFAULT_CALIBRATION: Calibration = { scale: 1, dx: 0, dy: 0 };
+const DEFAULT_CALIBRATION: Calibration = { paper: 'a4', scale: 1, dx: 0, dy: 0 };
 const CALIBRATION_KEY = 'perpus_card_print_calibration';
 
 const loadCalibration = (): Calibration => {
@@ -38,8 +42,8 @@ const loadCalibration = (): Calibration => {
 const slotPos = (slot: number, mirror: boolean, cal: Calibration) => {
   const w = CARD_W * cal.scale;
   const h = CARD_H * cal.scale;
-  const gridX = (A4_W - (COLS * w + (COLS - 1) * GAP)) / 2;
-  const gridY = (A4_H - (ROWS * h + (ROWS - 1) * GAP)) / 2;
+  const gridX = (PAPERS[cal.paper].w - (COLS * w + (COLS - 1) * GAP)) / 2;
+  const gridY = (PAPERS[cal.paper].h - (ROWS * h + (ROWS - 1) * GAP)) / 2;
   const row = Math.floor(slot / COLS);
   const col = slot % COLS;
   const c = mirror ? COLS - 1 - col : col;
@@ -175,13 +179,13 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
   
   /* ISO ID-1 Size */
   @page {
-    size: ${isDuplex ? 'A4 portrait' : '53.98mm 85.6mm portrait'};
+    size: ${isDuplex ? `${PAPERS[calibration.paper].w}mm ${PAPERS[calibration.paper].h}mm portrait` : '53.98mm 85.6mm portrait'};
     margin: 0;
   }
 
   .sheet {
-    width: 210mm;
-    height: 297mm;
+    width: ${PAPERS[calibration.paper].w}mm;
+    height: ${PAPERS[calibration.paper].h}mm;
     position: relative;
     overflow: hidden;
     page-break-after: always;
@@ -305,7 +309,7 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
-        format: isDuplex ? 'a4' : [cardW, cardH],
+        format: isDuplex ? [PAPERS[calibration.paper].w, PAPERS[calibration.paper].h] : [cardW, cardH],
       });
 
       const backDataUrl = backCardRef.current
@@ -321,12 +325,12 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
         }
         for (let start = 0; start < fronts.length; start += PER_SHEET) {
           const chunk = fronts.slice(start, start + PER_SHEET);
-          if (start > 0) pdf.addPage('a4', 'portrait');
+          if (start > 0) pdf.addPage([PAPERS[calibration.paper].w, PAPERS[calibration.paper].h], 'portrait');
           chunk.forEach((img, i) => {
             const { x, y, w, h } = slotPos(i, false, calibration);
             pdf.addImage(img, 'PNG', x, y, w, h);
           });
-          pdf.addPage('a4', 'portrait');
+          pdf.addPage([PAPERS[calibration.paper].w, PAPERS[calibration.paper].h], 'portrait');
           if (backDataUrl) {
             chunk.forEach((_, i) => {
               const { x, y, w, h } = slotPos(i, true, calibration);
@@ -374,7 +378,7 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
               <h3 className="font-extrabold text-slate-900 text-sm">Cetak Massal Kartu Anggota</h3>
               <p className="text-[10px] text-slate-400 font-bold mt-0.5">
                 {template === 'perpus'
-                  ? `Mencetak ${selectedMembers.length} kartu di A4 (${Math.ceil(selectedMembers.length / PER_SHEET) * 2} halaman, bolak-balik)`
+                  ? `Mencetak ${selectedMembers.length} kartu di ${PAPERS[calibration.paper].label.split(' ')[0]} (${Math.ceil(selectedMembers.length / PER_SHEET) * 2} halaman, bolak-balik)`
                   : `Mencetak ${selectedMembers.length} bagian depan dan 1 bagian belakang`}
               </p>
             </div>
@@ -399,12 +403,27 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
           </div>
 
           {template === 'perpus' && (
+            <div>
+              <label className="block text-xs font-extrabold text-slate-700 mb-2">Ukuran Kertas</label>
+              <select
+                value={calibration.paper}
+                onChange={(e) => setCal({ paper: e.target.value as PaperKey })}
+                className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 shadow-2xs focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+              >
+                {(Object.keys(PAPERS) as PaperKey[]).map((k) => (
+                  <option key={k} value={k}>{PAPERS[k].label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {template === 'perpus' && (
             <div className="p-3 border border-slate-200 rounded-2xl space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-extrabold text-slate-700">Kalibrasi Printer</span>
                 <button
                   type="button"
-                  onClick={() => setCalibration(DEFAULT_CALIBRATION)}
+                  onClick={() => setCalibration((c) => ({ ...DEFAULT_CALIBRATION, paper: c.paper }))}
                   className="text-[10px] font-extrabold text-slate-400 hover:text-slate-700 cursor-pointer"
                 >
                   Reset
@@ -442,7 +461,7 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
               </div>
               <div className="text-emerald-700 font-semibold mt-0.5">
                 {template === 'perpus'
-                  ? `${PER_SHEET} kartu per lembar A4: lembar depan lalu lembar belakang`
+                  ? `${PER_SHEET} kartu per lembar ${PAPERS[calibration.paper].label.split(' ')[0]}: lembar depan lalu lembar belakang`
                   : `Bagian depan (${selectedMembers.length} lbr) + Bagian belakang (1 lbr)`}
               </div>
             </div>
@@ -452,7 +471,7 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-blue-400" />
             <span>
               {template === 'perpus'
-                ? 'Layout A4 3x3 (9 kartu/lembar), tiap kartu ukuran KTP 53.98mm x 85.6mm. Urutan halaman: depan, belakang, depan, belakang. Cetak skala 100% (Actual size), pilih "Print on both sides / Cetak dua sisi" dengan flip on long edge. Posisi belakang sudah dicerminkan agar pas dengan depannya.'
+                ? `Layout ${PAPERS[calibration.paper].label.split(' ')[0]} 3x3 (9 kartu/lembar), tiap kartu ukuran KTP 53.98mm x 85.6mm. Urutan halaman: depan, belakang, depan, belakang. Cetak skala 100% (Actual size), pilih "Print on both sides / Cetak dua sisi" dengan flip on long edge. Posisi belakang sudah dicerminkan agar pas dengan depannya.`
                 : 'Cetak massal akan di-generate dalam bentuk file PDF full satu halaman penuh per satu orang anggota (ukuran 53.98mm x 85.6mm). Sisi belakang kartu hanya akan di-generate 1 kali di halaman paling akhir.'}
             </span>
           </div>
