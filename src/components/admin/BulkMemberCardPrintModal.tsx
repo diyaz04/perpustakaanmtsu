@@ -46,6 +46,13 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
     const frontImgSrc = template === 'siswa' ? '/assets/card-front.png' : '/assets/card-front-perpus.png';
     const backImgSrc = template === 'siswa' ? '/assets/card-back.png' : '/assets/card-back-perpus.png';
 
+    const isDuplex = template === 'perpus';
+    const backCardHtml = `
+      <div class="card card-back">
+        <img class="bg-img" src="${backImgSrc}" alt="Back" />
+      </div>
+    `;
+
     const cardsHtml = selectedMembers
       .map((member, idx) => {
         const dateStr = new Date(member.registered_at).toLocaleDateString('id-ID', {
@@ -78,15 +85,10 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
               </div>
             </div>
           </div>
+          ${isDuplex ? backCardHtml : ''}
         `;
       })
       .join('');
-
-    const backCardHtml = `
-      <div class="card card-back page-break-before">
-        <img class="bg-img" src="${backImgSrc}" alt="Back" />
-      </div>
-    `;
 
     const html = `<!DOCTYPE html>
 <html>
@@ -115,6 +117,10 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
     overflow: hidden;
     page-break-after: always;
     break-after: page;
+  }
+  .card:last-child {
+    page-break-after: auto;
+    break-after: auto;
   }
 
   .bg-img {
@@ -184,7 +190,7 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
 </head>
 <body>
   ${cardsHtml}
-  ${backCardHtml}
+  ${isDuplex ? '' : backCardHtml}
 </body>
 </html>`;
 
@@ -215,22 +221,29 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
         format: [cardW, cardH],
       });
 
-      // Capture all front cards
+      const isDuplex = template === 'perpus';
+      const backDataUrl = backCardRef.current
+        ? await toPng(backCardRef.current, { pixelRatio: 4, cacheBust: true })
+        : null;
+
+      let pageCount = 0;
+      const addPage = (dataUrl: string) => {
+        if (pageCount > 0) pdf.addPage([cardW, cardH], 'portrait');
+        pdf.addImage(dataUrl, 'PNG', 0, 0, cardW, cardH);
+        pageCount++;
+      };
+
+      // Perpus: depan, belakang, depan, belakang... (siap cetak bolak-balik)
       for (let i = 0; i < selectedMembers.length; i++) {
         const el = cardsRef.current[i];
         if (!el) continue;
-        
-        if (i > 0) pdf.addPage([cardW, cardH], 'portrait');
-        const dataUrl = await toPng(el, { pixelRatio: 4, cacheBust: true });
-        pdf.addImage(dataUrl, 'PNG', 0, 0, cardW, cardH);
+
+        addPage(await toPng(el, { pixelRatio: 4, cacheBust: true }));
+        if (isDuplex && backDataUrl) addPage(backDataUrl);
       }
 
-      // Add back card
-      if (backCardRef.current) {
-        pdf.addPage([cardW, cardH], 'portrait');
-        const backDataUrl = await toPng(backCardRef.current, { pixelRatio: 4, cacheBust: true });
-        pdf.addImage(backDataUrl, 'PNG', 0, 0, cardW, cardH);
-      }
+      // Siswa: 1 halaman belakang di akhir
+      if (!isDuplex && backDataUrl) addPage(backDataUrl);
 
       pdf.save('Kartu_Anggota_Massal.pdf');
 
@@ -256,7 +269,9 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
             <div>
               <h3 className="font-extrabold text-slate-900 text-sm">Cetak Massal Kartu Anggota</h3>
               <p className="text-[10px] text-slate-400 font-bold mt-0.5">
-                Mencetak {selectedMembers.length} bagian depan dan 1 bagian belakang
+                {template === 'perpus'
+                  ? `Mencetak ${selectedMembers.length} kartu bolak-balik (${selectedMembers.length * 2} halaman)`
+                  : `Mencetak ${selectedMembers.length} bagian depan dan 1 bagian belakang`}
               </p>
             </div>
           </div>
@@ -286,7 +301,9 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
                 Total kartu yang dicetak: <span className="text-emerald-600 text-base">{selectedMembers.length}</span> kartu
               </div>
               <div className="text-emerald-700 font-semibold mt-0.5">
-                Bagian depan ({selectedMembers.length} lbr) + Bagian belakang (1 lbr)
+                {template === 'perpus'
+                  ? `Depan & belakang selang-seling (${selectedMembers.length * 2} halaman)`
+                  : `Bagian depan (${selectedMembers.length} lbr) + Bagian belakang (1 lbr)`}
               </div>
             </div>
           </div>
@@ -294,8 +311,9 @@ export const BulkMemberCardPrintModal: React.FC<BulkMemberCardPrintModalProps> =
           <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl text-[10px] text-blue-700 font-semibold flex items-start gap-2">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-blue-400" />
             <span>
-              Cetak massal akan di-generate dalam bentuk file PDF full satu halaman penuh per satu orang anggota (ukuran 53.98mm x 85.6mm).
-              Sisi belakang kartu hanya akan di-generate 1 kali di halaman paling akhir.
+              {template === 'perpus'
+                ? 'Urutan halaman: depan, belakang, depan, belakang, dst (ukuran 53.98mm x 85.6mm). Di dialog print pilih "Print on both sides / Cetak dua sisi" dengan flip on long edge, lalu tiap kartu otomatis jadi bolak-balik.'
+                : 'Cetak massal akan di-generate dalam bentuk file PDF full satu halaman penuh per satu orang anggota (ukuran 53.98mm x 85.6mm). Sisi belakang kartu hanya akan di-generate 1 kali di halaman paling akhir.'}
             </span>
           </div>
         </div>
